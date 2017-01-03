@@ -1,0 +1,16 @@
+
+.DS_Store
+*.pyc
+*.pyo
+venv
+venv*
+dist
+build
+.cache/
+.idea/
+
+# Coverage reports
+htmlcov
+.coverage
+.coverage.*
+*,cover

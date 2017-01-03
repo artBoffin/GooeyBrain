@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GooeyBrain</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/material.min.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='js/material.min.js') }}"></script>
+
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.1.1.min.js') }}"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700" type="text/css">
+</head>
+<body>
+    <div class="mdl-layout mdl-js-layout">
+        <header class="mdl-layout__header mdl-color--teal-800">
+            <div class="mdl-layout__header-row">
+                <!-- Title -->
+                <span class="mdl-layout-title">GooeyBrain</span>
+            </div>
+        </header>
+        <main class="mdl-layout__content">
+            <div class="page-content">
+                <div class="mdl-grid">
+                    <div class="mdl-cell mdl-cell--6-col mdl-color--teal-100 mdl-card mdl-shadow--4dp">
+                        <div class="mdl-card__title">
+                            <h2 class="mdl-layout-title">Model Parameters</h2>
+                        </div>
+                    <div class="mdl-grid ">
+                        <div class="mdl-cell mdl-cell--12-col">
+                        <form action="/api/dcgan" method="Post">
+                            <div class="mdl-grid">
+                                <div class="mdl-cell mdl-cell--12-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--file">
+                                    <input class="mdl-textfield__input" placeholder="Path to Files" type="text" id="filesPathText" readonly/>
+                                    <div class="mdl-button mdl-button--primary mdl-button--icon mdl-button--file">
+                                        <label for="filesPath"><i class="material-icons">attach_file</i></label>
+                                        <input type="file" name="filesPath" id="filesPath" class="hidden"/>
+                                    </div>
+                                </div>
+                                </div>
+                            </div>
+
+
+                            <div class="mdl-grid">
+                                <div class="mdl-cell mdl-cell--6-col">
+                                    <input class="mdl-slider mdl-js-slider" type="range"  min="1" max="200"
+                                           value="25" tabindex="0" id="epoch" name="epoch" onchange="updateTextInput(this.value, 'epochValue');"/>
+                                </div>
+                                <div class="mdl-cell mdl-cell--2-col">
+                                    <label for="epochValue">Epochs:</label>
+                                </div>
+                                <div class="mdl-cell mdl-cell--2-col">
+                                    <input class="mdl-textfield__input" type="number" value="25"
+                                           id="epochValue" onkeyup="changeSliderValue(this.value, 'epoch');">
+                                </div>
+                            </div>
+
+                            <div class="mdl-grid">
+                                <div class="mdl-cell mdl-cell--6-col">
+                                    <input class="mdl-slider mdl-js-slider" type="range"  min="0" max="0.1" step="0.0000001"
+                                           value="0.0001" tabindex="0" id="learningRate" name="learningRate" onchange="updateTextInput(this.value, 'learningRateValue');"/>
+                                </div>
+                                <div class="mdl-cell mdl-cell--2-col">
+                                    <label for="learningRateValue">Learning Rate:</label>
+                                </div>
+                                <div class="mdl-cell mdl-cell--2-col">
+                                    <input class="mdl-textfield__input" type="number" value="0.0001" step="0.0000001"
+                                           id="learningRateValue" onkeyup="changeSliderValue(this.value, 'learningRate');">
+                                </div>
+                            </div>
+
+                            <div class="mdl-grid">
+                                <div class="mdl-cell mdl-cell--6-col">
+                                    <input class="mdl-slider mdl-js-slider" type="range"  min="0" max="1" step="0.001"
+                                           value="0.5" tabindex="0" id="beta1" onchange="updateTextInput(this.value, 'beta1Value');"/>
+                                </div>
+                                <div class="mdl-cell mdl-cell--2-col">
+                                    <label for="beta1Value">Beta1:</label>
+                                </div>
+                                <div class="mdl-cell mdl-cell--2-col">
+                                    <input class="mdl-textfield__input" type="number" value="0.5" step="0.001"
+                                           id="beta1Value" onkeyup="changeSliderValue(this.value, 'beta1');">
+                                </div>
+                            </div>
+
+                            <button class="mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect" type="submit" name="action">Train</button>
+
+                        </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mdl-cell mdl-cell--4-co">Training Progress Will apear Here</div>
+                <div class="mdl-cell mdl-cell--2-col"></div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
