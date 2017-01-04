@@ -1,9 +1,6 @@
-
-.DS_Store
 *.pyc
 *.pyo
 venv
-venv*
 dist
 build
 .cache/
@@ -14,3 +11,17 @@ htmlcov
 .coverage
 .coverage.*
 *,cover
+
+# testing
+coverage
+
+# production
+build
+
+# misc
+.DS_Store
+.env
+npm-debug.log
+
+node_modules
+app/static/bundle.js

@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template, request, redirect, url_for
 from subprocess import call
 
 # webapp
-app = Flask(__name__)
+app = Flask(__name__,static_folder='app/static', template_folder='app/templates')
 
 # for debugging puerposes
 app.config['TEMPLATES_AUTO_RELOAD'] = True
