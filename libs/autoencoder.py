@@ -3,12 +3,14 @@ training such a network on MNIST, CelebNet and the film, "Sita Sings The Blues"
 using an image pipeline.
 Parag K. Mital, Jan 2016
 """
-import tensorflow as tf
-import numpy as np
+import copy
 import os
+
+import numpy as np
+import tensorflow as tf
+
 from libs.dataset_utils import create_input_pipeline
 from libs.utils import *
-import copy
 
 
 def encoder(x, n_hidden=None, dimensions=[], filter_sizes=[],
@@ -420,14 +422,14 @@ def VAEGAN(input_shape=[None, 784],
 
 
 def train_vaegan(files,
-                 learning_rate=0.00001,
+                 learning_rate=0.0001,
                  batch_size=64,
-                 n_epochs=250,
+                 n_epochs=10,
                  n_examples=10,
-                 input_shape=[218, 178, 3],
+                 input_shape=[64,64, 3],
                  crop_shape=[64, 64, 3],
-                 crop_factor=0.8,
-                 n_filters=[100, 100, 100, 100],
+                 crop_factor=1.0,
+                 n_filters=[512, 258, 128, 64],
                  n_hidden=None,
                  n_code=128,
                  convolutional=True,
@@ -476,7 +478,7 @@ def train_vaegan(files,
         Description
     """
     tf.reset_default_graph()
-    activation=eval(activation)
+    #activation=eval(activation)
     if n_hidden<0:
         n_hidden=None
 
@@ -485,6 +487,9 @@ def train_vaegan(files,
     print variational
     print n_filters
     print n_hidden
+
+    if not os.path.exists('imgs'):
+        os.mkdir('imgs')
     ae = VAEGAN(input_shape=[None] + crop_shape,
                 convolutional=convolutional,
                 variational=variational,
@@ -543,7 +548,7 @@ def train_vaegan(files,
 
     n_files = len(files)
     test_xs = sess.run(batch) / 255.0
-    montage(test_xs, 'test_xs.png')
+    montage(test_xs, 'imgs/test_xs.png')
     try:
         while not coord.should_stop() or epoch_i < n_epochs:
             if batch_i % (n_files // batch_size) == 0:
@@ -589,7 +594,7 @@ def train_vaegan(files,
                     ae['z_samp']: batch_zs,
                     ae['gamma']: 0.5})
 
-            if batch_i % 50 == 0:
+            if batch_i % 3 == 0:
 
                 # Plot example reconstructions from latent layer
                 recon = sess.run(

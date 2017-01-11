@@ -1,10 +1,11 @@
-from flask import Flask, jsonify, render_template, request, redirect, url_for, g
-# from libs.utils import
-# import libs.autoencoder as vae
-import time
+from flask import (Flask,jsonify, render_template, request)
 import json
+
 import os
 import subprocess
+import libs.GAN
+# import libs.autoencoder as vae
+import time
 
 # webapp
 app = Flask(__name__,static_folder='app/static', template_folder='app/templates')
@@ -18,20 +19,45 @@ global tensor_board
 training_process = None
 tensor_board = None
 
+
 @app.route('/api/dcgan', methods=['POST'])
 def dcegan():
     global training_process
     global tensor_board
     arr = request.json
-    flags = ["--%s %s"%(x['name'], x['value']) for x in arr]
-    cmd = ' '.join(['python', 'libs/run_tf.py']+flags)
-    training_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    tensor_board = subprocess.Popen('tensorboard --logdir=logs',shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print "started train and tensor board"
+    print arr
+    # flags = ["--%s %s"%(x['name'], x['value']) for x in arr]
+    # cmd = ' '.join(['python', 'libs/run_tf.py']+flags)
+    # training_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # tensor_board = subprocess.Popen('tensorboard --logdir=logs',shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # print "started train and tensor board"
     return jsonify({'results':"trainig now!"})
+
 
 @app.route('/api/is_training')
 def is_training():
+    global training_process
+    global tensor_board
+    training = False
+    tensorboard = False
+    out = " "
+    if training_process is not None:
+        #out = training_process.stdout.readline()
+        training = True
+    if tensor_board is not None:
+        tensorboard = True
+    return jsonify({"training":training,"tensorboard":tensorboard, "out":out})
+
+
+@app.route('/api/get_def_parameters')
+def get_parameters():
+    params = dict()
+    params['GAN'] = []
+    for p in libs.GAN.GAN.parameters:
+        params['GAN'].append(p.getJson())
+    return jsonify(params)
+
+
     global training_process
     global tensor_board
     training = False
@@ -87,6 +113,8 @@ def save():
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# models - GAN (for DCGAN set convolutional=true, VAE, VAEGAN, DRAW?)
 
     #for running tensor board:
 #     call('tensorboard --logdir=logs')

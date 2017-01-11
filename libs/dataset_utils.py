@@ -6,6 +6,7 @@ Copyright Parag K. Mital, June 2016.
 
 import os
 import pickle
+
 import numpy as np
 import tensorflow as tf
 

@@ -7,11 +7,12 @@ import {
     Layout,
     Header,
     Content,
-    Textfield
+    Textfield,
+    Switch
 } from "react-mdl";
 import $ from 'jquery';
 
-class ParameterRow extends React.Component {
+class ParameterSliderRow extends React.Component {
     constructor(props) {
         super(props);
         this.handleChange = this.handleChange.bind(this);
@@ -88,6 +89,29 @@ class ParameterSlider extends React.Component{
     }
 }
 
+class ParameterToggleRow extends React.Component{
+    constructor(props) {
+        super(props);
+        this.handleChange = this.handleChange.bind(this);
+    }
+
+    handleChange(e) {
+        this.props.onChange(e.target.checked, this.props.idx);
+    }
+    render() {
+        const name = this.props.parameter.name;
+        const value = this.props.parameter.value;
+        return (
+                <tr>
+                <td>{name}</td>
+                <td>
+                    <Switch id={name} checked={value} onChange={this.handleChange}>{value}</Switch>
+                </td>
+            </tr>
+        );
+    }
+}
+
 class ParametersList extends React.Component {
     constructor(props) {
         super(props);
@@ -96,16 +120,20 @@ class ParametersList extends React.Component {
 
     handleChange(value, idx) {
         this.props.onChange(value, idx);
-        console.log(this.props.parameters)
     }
     render() {
         var rows = [];
         var lastCategory = null;
         let changeFunction = this.handleChange;
         this.props.parameters.forEach(function(parameter, index) {
-            if (parameter.type===1) {
-                rows.push(<ParameterRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>);
+            let curr_row = null;
+            if (parameter.type==='float' || parameter.type==='int') {
+                curr_row=<ParameterSliderRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>;
             }
+            else if (parameter.type==='bool') {
+                curr_row=<ParameterToggleRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>;
+            }
+            rows.push(curr_row);
         });
         return (
             <table style={{width: '100%'}}>
@@ -121,7 +149,7 @@ class TrainingForm extends React.Component{
         super(props);
         let training = false;
         this.state = {
-            data: this.props.parameters,
+            data: [],
             isTraining: training
         };
 
@@ -129,12 +157,17 @@ class TrainingForm extends React.Component{
         this.handleTrain = this.handleTrain.bind(this);
         this.handleSave = this.handleSave.bind(this);
     }
+        componentDidMount() {
+        $.getJSON('/api/get_def_parameters')
+            .then((params)=>{
+                this.setState({data:params.GAN});
+            });
+        };
 
     handleSingleParameterChange(value, parameterIdx) {
         let newParameters = this.state.data;
         newParameters[parameterIdx].value = value;
         this.setState({data:newParameters});
-        console.log("changed: "+newParameters[parameterIdx].name +"to"+value);
     }
 
     handleTrain(event) {
@@ -159,7 +192,7 @@ class TrainingForm extends React.Component{
                     <Grid>
                         <Cell col={12} >
                             <h4> Model Parameters </h4>
-                            <ParametersList parameters={this.props.parameters} onChange={this.handleSingleParameterChange} />
+                            <ParametersList parameters={this.state.data} onChange={this.handleSingleParameterChange} />
                         </Cell>
                     </Grid>
                     <Grid>
@@ -208,7 +241,6 @@ var IframeComponent=React.createClass({
         const training = this.props.isTraining;
         var Iframe=this.props.iframe;
         let view = null;
-        console.log(training)
         if (!training) {
             view = <div> Tensorboard will show up here</div>;
         } else {
@@ -216,6 +248,7 @@ var IframeComponent=React.createClass({
             view =
                 <div>
                     <div> realod the page to update Tensorboard</div>
+                    <div> you can also navigate to <a href="http://localhost:6006/" target='_blank'>http://localhost:6006/</a> to see this on full screen</div>
                     <Iframe src={this.props.src} height={this.props.height} width={this.props.width}/>
                 </div>;
         }
@@ -229,7 +262,6 @@ var IframeComponent=React.createClass({
 });
 
 class TrainWindow extends React.Component {
-
     constructor(props) {
         super(props);
         let training = false;
@@ -249,6 +281,7 @@ class TrainWindow extends React.Component {
             a.setState({isTraining: isTraining, tensorborad:boardStatus})
         });
     }
+
     componentDidMount() {
         this.timerID = setInterval(
             () => this.setTrainingStatus(),
@@ -264,7 +297,7 @@ class TrainWindow extends React.Component {
         return(
         <Grid>
         <Cell col={4} shadow={4}>
-            <TrainingForm parameters={dcgan_parameters} isTraining={this.state.isTraining}/>
+            <TrainingForm isTraining={this.state.isTraining}/>
         </Cell>
         <Cell col={8}>
             <IframeComponent iframe='iframe' src="http://127.0.0.1:6006" height="100%" width="100%" isTraining={this.state.tensorborad}/>
@@ -286,45 +319,14 @@ function train(inputParameters){
     });
 }
 
-var VAEGAN = [
-    {name: 'files', value:'train/', type:5},
-    {name: 'learning_rate', value:0.0002, min:0, max:0.1, step:0.00000001, type:1},
-    {name: 'batch_size' ,value:64, min:3, max:300, step:1, type:1},
-    {name: 'n_epochs', value:25, min:1, max:300, step:1, type:1},
-    {name: 'n_examples', value:10, min:0, max:300, step:1, type:1},
-    {name: 'input_shape', value:[218, 178, 3], type:2},
-    {name: 'crop_shape', value:[64, 64, 3], type:2},
-    {name: 'crop_factor', value:0.8, min:0.2, max:1, step:0.01, type:1},
-    {name: 'n_filters', value:[100, 100, 100, 100], type:2},
-    {name: 'n_hidden', value:-1, type:1, min:-1, max:30, step:1},
-    {name: 'n_code', value:128, min:1, max:400, step:1, type:1},
-    {name: 'convolutional', value: true, type:3},
-    {name: 'variational', value:true, type:3},
-    {name: 'filter_sizes', value:[3, 3, 3, 3], type:2},
-    {name: 'activation', value: 'tf.nn.elu', type:4},
-    {name: 'sample_step', value:100, min:1, max:1000, step:1, type:1},
-    {name: 'ckpt_name', value: "vaegan.ckpt", type:5}
-];
-// type: 1- number, 2-array, 3-bool, 4-function, 5-path
-
-var dcgan_parameters = [
-    {name: "dataset", value: "train", type:5},
-    {name: "epoch", value: 25, type:1, min:1, max:300, step:1},
-    {name: "learning_rate", value:0.0002, min:0, max:0.1, step:0.00000001, type:1},
-    {name:"beta1", value:0.5, min:0, max:1, step:0.0001, type:1},
-    {name:"batch_size", value:64, min:3, max:300, step:1, type:1},
-    {name:"output_size", value:64, min:10, max:500, step:1, type:1},
-    {name:"c_dim", value:3, min:1, max:10, step:1, type:1},
-    {name:"checkpoint_dir", value:"ckpt", type:5},
-    {name:"sample_dir", value:"samples", type:5},
-    {name:'image_size', value:64, min:10, max:500, step:1, type:1},
-    {name:'is_train', value:'True', type:3},
-    {name:'visualize', value:'False', type:3}
-    //"sample_step":100
-];
-
+function getParameters() {
+    $.getJSON('/api/get_parameters', function( data ) {
+        parameters = data.GAN;
+    });
+}
 
 class App extends Component {
+
     render() {
         return (
         <div>

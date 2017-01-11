@@ -1,12 +1,15 @@
 from __future__ import division
+
 import os
 import time
 from glob import glob
-import tensorflow as tf
-import numpy as np
-from six.moves import xrange
 
+import numpy as np
+import tensorflow as tf
+
+from six.moves import xrange
 from utils import *
+
 
 class DCGAN(object):
     def __init__(self, sess, image_size=108, is_crop=True,

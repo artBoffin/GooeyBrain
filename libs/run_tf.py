@@ -1,10 +1,10 @@
 import os
-import scipy.misc
+
 import numpy as np
+import scipy.misc
+import tensorflow as tf
 
 from dcgan import DCGAN
-
-import tensorflow as tf
 from utils import pp
 
 flags = tf.app.flags

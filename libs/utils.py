@@ -5,21 +5,24 @@ Parag K. Mital
 Copyright Parag K. Mital, June 2016.
 """
 from __future__ import division
-import tensorflow as tf
-import urllib
-import numpy as np
-import zipfile
+
+import json
+import math
 import os
+import pprint
+import random
+import urllib
+import zipfile
+from time import gmtime, strftime
+
+import numpy as np
+import scipy.misc
+import tensorflow as tf
+
 """
 Some codes from https://github.com/Newmu/dcgan_code
 """
 
-import math
-import json
-import random
-import pprint
-import scipy.misc
-from time import gmtime, strftime
 
 try:
     image_summary = tf.image_summary
@@ -246,7 +249,7 @@ def montage(images, saveto='montage.png'):
                 this_img = images[this_filter]
                 m[1 + i + i * img_h:1 + i + (i + 1) * img_h,
                   1 + j + j * img_w:1 + j + (j + 1) * img_w] = this_img
-    plt.imsave(arr=m, fname=saveto)
+    scipy.misc.imsave(saveto, m)
     return m
 
 
@@ -426,231 +429,231 @@ def binary_cross_entropy(z, x, name=None):
                   (1. - x) * tf.log(1. - z + eps)))
 
 
-# def conv2d(x, n_output,
-#            k_h=5, k_w=5, d_h=2, d_w=2,
-#            padding='SAME', name='conv2d', reuse=None):
-#     """Helper for creating a 2d convolution operation.
-#     Parameters
-#     ----------
-#     x : tf.Tensor
-#         Input tensor to convolve.
-#     n_output : int
-#         Number of filters.
-#     k_h : int, optional
-#         Kernel height
-#     k_w : int, optional
-#         Kernel width
-#     d_h : int, optional
-#         Height stride
-#     d_w : int, optional
-#         Width stride
-#     padding : str, optional
-#         Padding type: "SAME" or "VALID"
-#     name : str, optional
-#         Variable scope
-#     Returns
-#     -------
-#     op : tf.Tensor
-#         Output of convolution
-#     """
-#     with tf.variable_scope(name or 'conv2d', reuse=reuse):
-#         W = tf.get_variable(
-#             name='W',
-#             shape=[k_h, k_w, x.get_shape()[-1], n_output],
-#             initializer=tf.contrib.layers.xavier_initializer_conv2d())
+def conv2d(x, n_output,
+           k_h=5, k_w=5, d_h=2, d_w=2,
+           padding='SAME', name='conv2d', reuse=None):
+    """Helper for creating a 2d convolution operation.
+    Parameters
+    ----------
+    x : tf.Tensor
+        Input tensor to convolve.
+    n_output : int
+        Number of filters.
+    k_h : int, optional
+        Kernel height
+    k_w : int, optional
+        Kernel width
+    d_h : int, optional
+        Height stride
+    d_w : int, optional
+        Width stride
+    padding : str, optional
+        Padding type: "SAME" or "VALID"
+    name : str, optional
+        Variable scope
+    Returns
+    -------
+    op : tf.Tensor
+        Output of convolution
+    """
+    with tf.variable_scope(name or 'conv2d', reuse=reuse):
+        W = tf.get_variable(
+            name='W',
+            shape=[k_h, k_w, x.get_shape()[-1], n_output],
+            initializer=tf.contrib.layers.xavier_initializer_conv2d())
+
+        conv = tf.nn.conv2d(
+            name='conv',
+            input=x,
+            filter=W,
+            strides=[1, d_h, d_w, 1],
+            padding=padding)
+
+        b = tf.get_variable(
+            name='b',
+            shape=[n_output],
+            initializer=tf.constant_initializer(0.0))
+
+        h = tf.nn.bias_add(
+            name='h',
+            value=conv,
+            bias=b)
+
+    return h, W
+
+# def conv2d(input_, output_dim,
+#            k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02,
+#            name="conv2d"):
+#     with tf.variable_scope(name):
+#         w = tf.get_variable('w', [k_h, k_w, input_.get_shape()[-1], output_dim],
+#                             initializer=tf.truncated_normal_initializer(stddev=stddev))
+#         conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding='SAME')
 #
-#         conv = tf.nn.conv2d(
-#             name='conv',
-#             input=x,
-#             filter=W,
-#             strides=[1, d_h, d_w, 1],
-#             padding=padding)
+#         biases = tf.get_variable('biases', [output_dim], initializer=tf.constant_initializer(0.0))
+#         conv = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
 #
-#         b = tf.get_variable(
-#             name='b',
-#             shape=[n_output],
-#             initializer=tf.constant_initializer(0.0))
+#         return conv
+
+
+def deconv2d(x, n_output_h, n_output_w, n_output_ch, n_input_ch=None,
+             k_h=5, k_w=5, d_h=2, d_w=2,
+             padding='SAME', name='deconv2d', reuse=None):
+    """Deconvolution helper.
+    Parameters
+    ----------
+    x : tf.Tensor
+        Input tensor to convolve.
+    n_output_h : int
+        Height of output
+    n_output_w : int
+        Width of output
+    n_output_ch : int
+        Number of filters.
+    k_h : int, optional
+        Kernel height
+    k_w : int, optional
+        Kernel width
+    d_h : int, optional
+        Height stride
+    d_w : int, optional
+        Width stride
+    padding : str, optional
+        Padding type: "SAME" or "VALID"
+    name : str, optional
+        Variable scope
+    Returns
+    -------
+    op : tf.Tensor
+        Output of deconvolution
+    """
+    with tf.variable_scope(name or 'deconv2d', reuse=reuse):
+        W = tf.get_variable(
+            name='W',
+            shape=[k_h, k_h, n_output_ch, n_input_ch or x.get_shape()[-1]],
+            initializer=tf.contrib.layers.xavier_initializer_conv2d())
+
+        conv = tf.nn.conv2d_transpose(
+            name='conv_t',
+            value=x,
+            filter=W,
+            output_shape=tf.pack(
+                [tf.shape(x)[0], n_output_h, n_output_w, n_output_ch]),
+            strides=[1, d_h, d_w, 1],
+            padding=padding)
+
+        conv.set_shape([None, n_output_h, n_output_w, n_output_ch])
+
+        b = tf.get_variable(
+            name='b',
+            shape=[n_output_ch],
+            initializer=tf.constant_initializer(0.0))
+
+        h = tf.nn.bias_add(name='h', value=conv, bias=b)
+
+    return h, W
+
+# def deconv2d(input_, output_shape,
+#              k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02,
+#              name="deconv2d", with_w=False):
+#     with tf.variable_scope(name):
+#         # filter : [height, width, output_channels, in_channels]
+#         w = tf.get_variable('w', [k_h, k_w, output_shape[-1], input_.get_shape()[-1]],
+#                             initializer=tf.random_normal_initializer(stddev=stddev))
 #
-#         h = tf.nn.bias_add(
-#             name='h',
-#             value=conv,
-#             bias=b)
+#         try:
+#             deconv = tf.nn.conv2d_transpose(input_, w, output_shape=output_shape,
+#                                 strides=[1, d_h, d_w, 1])
 #
-#     return h, W
-
-def conv2d(input_, output_dim,
-           k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02,
-           name="conv2d"):
-    with tf.variable_scope(name):
-        w = tf.get_variable('w', [k_h, k_w, input_.get_shape()[-1], output_dim],
-                            initializer=tf.truncated_normal_initializer(stddev=stddev))
-        conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding='SAME')
-
-        biases = tf.get_variable('biases', [output_dim], initializer=tf.constant_initializer(0.0))
-        conv = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
-
-        return conv
-
-
-# def deconv2d(x, n_output_h, n_output_w, n_output_ch, n_input_ch=None,
-#              k_h=5, k_w=5, d_h=2, d_w=2,
-#              padding='SAME', name='deconv2d', reuse=None):
-#     """Deconvolution helper.
-#     Parameters
-#     ----------
-#     x : tf.Tensor
-#         Input tensor to convolve.
-#     n_output_h : int
-#         Height of output
-#     n_output_w : int
-#         Width of output
-#     n_output_ch : int
-#         Number of filters.
-#     k_h : int, optional
-#         Kernel height
-#     k_w : int, optional
-#         Kernel width
-#     d_h : int, optional
-#         Height stride
-#     d_w : int, optional
-#         Width stride
-#     padding : str, optional
-#         Padding type: "SAME" or "VALID"
-#     name : str, optional
-#         Variable scope
-#     Returns
-#     -------
-#     op : tf.Tensor
-#         Output of deconvolution
-#     """
-#     with tf.variable_scope(name or 'deconv2d', reuse=reuse):
-#         W = tf.get_variable(
-#             name='W',
-#             shape=[k_h, k_h, n_output_ch, n_input_ch or x.get_shape()[-1]],
-#             initializer=tf.contrib.layers.xavier_initializer_conv2d())
+#         # Support for verisons of TensorFlow before 0.7.0
+#         except AttributeError:
+#             deconv = tf.nn.deconv2d(input_, w, output_shape=output_shape,
+#                                 strides=[1, d_h, d_w, 1])
 #
-#         conv = tf.nn.conv2d_transpose(
-#             name='conv_t',
-#             value=x,
-#             filter=W,
-#             output_shape=tf.pack(
-#                 [tf.shape(x)[0], n_output_h, n_output_w, n_output_ch]),
-#             strides=[1, d_h, d_w, 1],
-#             padding=padding)
+#         biases = tf.get_variable('biases', [output_shape[-1]], initializer=tf.constant_initializer(0.0))
+#         deconv = tf.reshape(tf.nn.bias_add(deconv, biases), deconv.get_shape())
 #
-#         conv.set_shape([None, n_output_h, n_output_w, n_output_ch])
+#         if with_w:
+#             return deconv, w, biases
+#         else:
+#             return deconv
+
+
+def lrelu(features, leak=0.2):
+    """Leaky rectifier.
+    Parameters
+    ----------
+    features : tf.Tensor
+        Input to apply leaky rectifier to.
+    leak : float, optional
+        Percentage of leak.
+    Returns
+    -------
+    op : tf.Tensor
+        Resulting output of applying leaky rectifier activation.
+    """
+    f1 = 0.5 * (1 + leak)
+    f2 = 0.5 * (1 - leak)
+    return f1 * features + f2 * abs(features)
+
+# def lrelu(x, leak=0.2, name="lrelu"):
+#   return tf.maximum(x, leak*x)
+
+
+def linear(x, n_output, name=None, activation=None, reuse=None):
+    """Fully connected layer.
+    Parameters
+    ----------
+    x : tf.Tensor
+        Input tensor to connect
+    n_output : int
+        Number of output neurons
+    name : None, optional
+        Scope to apply
+    Returns
+    -------
+    h, W : tf.Tensor, tf.Tensor
+        Output of fully connected layer and the weight matrix
+    """
+    if len(x.get_shape()) != 2:
+        x = flatten(x, reuse=reuse)
+
+    n_input = x.get_shape().as_list()[1]
+
+    with tf.variable_scope(name or "fc", reuse=reuse):
+        W = tf.get_variable(
+            name='W',
+            shape=[n_input, n_output],
+            dtype=tf.float32,
+            initializer=tf.contrib.layers.xavier_initializer())
+
+        b = tf.get_variable(
+            name='b',
+            shape=[n_output],
+            dtype=tf.float32,
+            initializer=tf.constant_initializer(0.0))
+
+        h = tf.nn.bias_add(
+            name='h',
+            value=tf.matmul(x, W),
+            bias=b)
+
+        if activation:
+            h = activation(h)
+
+        return h, W
+
+# def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=False):
+#     shape = input_.get_shape().as_list()
 #
-#         b = tf.get_variable(
-#             name='b',
-#             shape=[n_output_ch],
-#             initializer=tf.constant_initializer(0.0))
-#
-#         h = tf.nn.bias_add(name='h', value=conv, bias=b)
-#
-#     return h, W
-
-def deconv2d(input_, output_shape,
-             k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02,
-             name="deconv2d", with_w=False):
-    with tf.variable_scope(name):
-        # filter : [height, width, output_channels, in_channels]
-        w = tf.get_variable('w', [k_h, k_w, output_shape[-1], input_.get_shape()[-1]],
-                            initializer=tf.random_normal_initializer(stddev=stddev))
-
-        try:
-            deconv = tf.nn.conv2d_transpose(input_, w, output_shape=output_shape,
-                                strides=[1, d_h, d_w, 1])
-
-        # Support for verisons of TensorFlow before 0.7.0
-        except AttributeError:
-            deconv = tf.nn.deconv2d(input_, w, output_shape=output_shape,
-                                strides=[1, d_h, d_w, 1])
-
-        biases = tf.get_variable('biases', [output_shape[-1]], initializer=tf.constant_initializer(0.0))
-        deconv = tf.reshape(tf.nn.bias_add(deconv, biases), deconv.get_shape())
-
-        if with_w:
-            return deconv, w, biases
-        else:
-            return deconv
-
-
-# def lrelu(features, leak=0.2):
-#     """Leaky rectifier.
-#     Parameters
-#     ----------
-#     features : tf.Tensor
-#         Input to apply leaky rectifier to.
-#     leak : float, optional
-#         Percentage of leak.
-#     Returns
-#     -------
-#     op : tf.Tensor
-#         Resulting output of applying leaky rectifier activation.
-#     """
-#     f1 = 0.5 * (1 + leak)
-#     f2 = 0.5 * (1 - leak)
-#     return f1 * features + f2 * abs(features)
-
-def lrelu(x, leak=0.2, name="lrelu"):
-  return tf.maximum(x, leak*x)
-
-
-# def linear(x, n_output, name=None, activation=None, reuse=None):
-#     """Fully connected layer.
-#     Parameters
-#     ----------
-#     x : tf.Tensor
-#         Input tensor to connect
-#     n_output : int
-#         Number of output neurons
-#     name : None, optional
-#         Scope to apply
-#     Returns
-#     -------
-#     h, W : tf.Tensor, tf.Tensor
-#         Output of fully connected layer and the weight matrix
-#     """
-#     if len(x.get_shape()) != 2:
-#         x = flatten(x, reuse=reuse)
-#
-#     n_input = x.get_shape().as_list()[1]
-#
-#     with tf.variable_scope(name or "fc", reuse=reuse):
-#         W = tf.get_variable(
-#             name='W',
-#             shape=[n_input, n_output],
-#             dtype=tf.float32,
-#             initializer=tf.contrib.layers.xavier_initializer())
-#
-#         b = tf.get_variable(
-#             name='b',
-#             shape=[n_output],
-#             dtype=tf.float32,
-#             initializer=tf.constant_initializer(0.0))
-#
-#         h = tf.nn.bias_add(
-#             name='h',
-#             value=tf.matmul(x, W),
-#             bias=b)
-#
-#         if activation:
-#             h = activation(h)
-#
-#         return h, W
-
-def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=False):
-    shape = input_.get_shape().as_list()
-
-    with tf.variable_scope(scope or "Linear"):
-        matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
-                                 tf.random_normal_initializer(stddev=stddev))
-        bias = tf.get_variable("bias", [output_size],
-            initializer=tf.constant_initializer(bias_start))
-        if with_w:
-            return tf.matmul(input_, matrix) + bias, matrix, bias
-        else:
-            return tf.matmul(input_, matrix) + bias
+#     with tf.variable_scope(scope or "Linear"):
+#         matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
+#                                  tf.random_normal_initializer(stddev=stddev))
+#         bias = tf.get_variable("bias", [output_size],
+#             initializer=tf.constant_initializer(bias_start))
+#         if with_w:
+#             return tf.matmul(input_, matrix) + bias, matrix, bias
+#         else:
+#             return tf.matmul(input_, matrix) + bias
 
 
 def flatten(x, name=None, reuse=None):
