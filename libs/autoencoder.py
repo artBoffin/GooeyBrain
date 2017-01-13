@@ -429,9 +429,9 @@ def train_vaegan(files,
                  input_shape=[64,64, 3],
                  crop_shape=[64, 64, 3],
                  crop_factor=1.0,
-                 n_filters=[512, 258, 128, 64],
+                 n_filters=[64, 128, 256, 512],
                  n_hidden=None,
-                 n_code=128,
+                 n_code=2,
                  convolutional=True,
                  variational=True,
                  filter_sizes=[3, 3, 3, 3],
@@ -550,7 +550,7 @@ def train_vaegan(files,
     test_xs = sess.run(batch) / 255.0
     montage(test_xs, 'imgs/test_xs.png')
     try:
-        while not coord.should_stop() or epoch_i < n_epochs:
+        while (not coord.should_stop()) or (epoch_i < n_epochs):
             if batch_i % (n_files // batch_size) == 0:
                 batch_i = 0
                 epoch_i += 1

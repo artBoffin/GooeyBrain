@@ -483,11 +483,11 @@ def conv2d(x, n_output,
 
 # def conv2d(input_, output_dim,
 #            k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02,
-#            name="conv2d"):
-#     with tf.variable_scope(name):
+#            name="conv2d", padding='SAME', reuse=False):
+#     with tf.variable_scope(name, reuse=reuse):
 #         w = tf.get_variable('w', [k_h, k_w, input_.get_shape()[-1], output_dim],
 #                             initializer=tf.truncated_normal_initializer(stddev=stddev))
-#         conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding='SAME')
+#         conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding=padding)
 #
 #         biases = tf.get_variable('biases', [output_dim], initializer=tf.constant_initializer(0.0))
 #         conv = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
@@ -529,7 +529,7 @@ def deconv2d(x, n_output_h, n_output_w, n_output_ch, n_input_ch=None,
     with tf.variable_scope(name or 'deconv2d', reuse=reuse):
         W = tf.get_variable(
             name='W',
-            shape=[k_h, k_h, n_output_ch, n_input_ch or x.get_shape()[-1]],
+            shape=[k_h, k_w, n_output_ch, n_input_ch or x.get_shape()[-1]],
             initializer=tf.contrib.layers.xavier_initializer_conv2d())
 
         conv = tf.nn.conv2d_transpose(
@@ -554,8 +554,8 @@ def deconv2d(x, n_output_h, n_output_w, n_output_ch, n_input_ch=None,
 
 # def deconv2d(input_, output_shape,
 #              k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02,
-#              name="deconv2d", with_w=False):
-#     with tf.variable_scope(name):
+#              name="deconv2d", with_w=False, reuse=False):
+#     with tf.variable_scope(name, reuse=reuse):
 #         # filter : [height, width, output_channels, in_channels]
 #         w = tf.get_variable('w', [k_h, k_w, output_shape[-1], input_.get_shape()[-1]],
 #                             initializer=tf.random_normal_initializer(stddev=stddev))
@@ -578,25 +578,25 @@ def deconv2d(x, n_output_h, n_output_w, n_output_ch, n_input_ch=None,
 #             return deconv
 
 
-def lrelu(features, leak=0.2):
-    """Leaky rectifier.
-    Parameters
-    ----------
-    features : tf.Tensor
-        Input to apply leaky rectifier to.
-    leak : float, optional
-        Percentage of leak.
-    Returns
-    -------
-    op : tf.Tensor
-        Resulting output of applying leaky rectifier activation.
-    """
-    f1 = 0.5 * (1 + leak)
-    f2 = 0.5 * (1 - leak)
-    return f1 * features + f2 * abs(features)
+# def lrelu(features, leak=0.2):
+#     """Leaky rectifier.
+#     Parameters
+#     ----------
+#     features : tf.Tensor
+#         Input to apply leaky rectifier to.
+#     leak : float, optional
+#         Percentage of leak.
+#     Returns
+#     -------
+#     op : tf.Tensor
+#         Resulting output of applying leaky rectifier activation.
+#     """
+#     f1 = 0.5 * (1 + leak)
+#     f2 = 0.5 * (1 - leak)
+#     return f1 * features + f2 * abs(features)
 
-# def lrelu(x, leak=0.2, name="lrelu"):
-#   return tf.maximum(x, leak*x)
+def lrelu(x, leak=0.2, name="lrelu"):
+  return tf.maximum(x, leak*x)
 
 
 def linear(x, n_output, name=None, activation=None, reuse=None):
@@ -721,6 +721,19 @@ def to_tensor(x):
         raise ValueError('Unsupported input dimensions')
     return x_tensor
 
+
+def bn(x, phase_train, name='bn', decay=0.9, reuse=None,
+               affine=True):
+    "call batch normalization"
+    return tf.contrib.layers.batch_norm(x,
+                                        decay=decay,
+                                        updates_collections=None,
+                                        epsilon=1e-6,
+                                        scale=True,
+                                        is_training=phase_train,
+                                        scope=name)
+
+
 class batch_norm(object):
     def __init__(self, epsilon=1e-5, momentum = 0.9, name="batch_norm"):
         with tf.variable_scope(name):
@@ -736,3 +749,4 @@ class batch_norm(object):
                                             scale=True,
                                             is_training=train,
                                             scope=self.name)
+

@@ -28,7 +28,7 @@ app/static/bundle.js
 
 # files generated from running train
 saved_parameters
-train
-ckpt/
-logs/
-tensor-flow-warnings
+data
+tmp
+test.py
+logs
