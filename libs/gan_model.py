@@ -180,25 +180,10 @@ class GAN(object):
         np.random.shuffle(data)
         print ("input data: %d files"%len(data))
 
-        init_lr_g = self.learning_rate
-        init_lr_d = self.learning_rate
-
-        lr_g = tf.placeholder(tf.float32, shape=[], name='learning_rate_g')
-        lr_d = tf.placeholder(tf.float32, shape=[], name='learning_rate_d')
-
-        try:
-            from tf.contrib.layers import apply_regularization
-            d_reg = apply_regularization(
-                tf.contrib.layers.l2_regularizer(1e-6), self.vars_d)
-            g_reg = apply_regularization(
-                tf.contrib.layers.l2_regularizer(1e-6), self.vars_g)
-        except:
-            d_reg, g_reg = 0, 0
-
-        opt_g = tf.train.AdamOptimizer(lr_g, name='Adam_g').minimize(
-            self.loss_G + g_reg, var_list=self.vars_g)
-        opt_d = tf.train.AdamOptimizer(lr_d, name='Adam_d').minimize(
-            self.loss_D + d_reg, var_list=self.vars_d)
+        opt_g = tf.train.AdamOptimizer(self.learning_rate, name='Adam_g').minimize(
+            self.loss_G, var_list=self.vars_g)
+        opt_d = tf.train.AdamOptimizer(self.learning_rate, name='Adam_d').minimize(
+            self.loss_D, var_list=self.vars_d)
 
         self.sess.run(tf.global_variables_initializer())
         self.sess.run(tf.local_variables_initializer())
@@ -234,10 +219,10 @@ class GAN(object):
             print(" [!] Load failed...")
 
         step_i, t_i = 0, 0
-        loss_d = 1
-        loss_g = 1
-        n_loss_d, total_loss_d = 1, 1
-        n_loss_g, total_loss_g = 1, 1
+        # loss_d = 1
+        # loss_g = 1
+        # n_loss_d, total_loss_d = 1, 1
+        # n_loss_g, total_loss_g = 1, 1
         for epoch in xrange(self.n_epochs):
             batch_idxs = min(len(data), self.train_size) // self.batch_size
             np.random.shuffle(data)
@@ -252,39 +237,36 @@ class GAN(object):
                 batch_zs = np.random.uniform(
                     -1.0, 1.0, [self.batch_size, self.z_dim]).astype(np.float32)
 
-                this_lr_g = min(1e-2, max(1e-6, init_lr_g * (loss_g / loss_d) ** 2))
-                this_lr_d = min(1e-2, max(1e-6, init_lr_d * (loss_d / loss_g) ** 2))
+                # this_lr_g = min(1e-2, max(1e-6, init_lr_g * (loss_g / loss_d) ** 2))
+                # this_lr_d = min(1e-2, max(1e-6, init_lr_d * (loss_d / loss_g) ** 2))
 
                 # Update D network
                 loss_d, _, sum_d = self.sess.run([self.loss_D, opt_d, self.D_sum_op],
                                                  feed_dict={self.images: batch_xs,
-                                                            self.z: batch_zs,
-                                                            lr_d: this_lr_d})
-                total_loss_d += loss_d
-                n_loss_d += 1
+                                                            self.z: batch_zs})
+                # total_loss_d += loss_d
+                # n_loss_d += 1
                 self.writer.add_summary(sum_d, step_i)
 
                 # Update G network
                 loss_g, _, sum_g = self.sess.run([self.loss_G, opt_g, self.G_sum_op],
-                                                 feed_dict={self.z: batch_zs,
-                                                            lr_g: this_lr_g})
-                total_loss_g += loss_g
-                n_loss_g += 1
+                                                 feed_dict={self.z: batch_zs})
+                # total_loss_g += loss_g
+                # n_loss_g += 1
                 self.writer.add_summary(sum_g, step_i)
 
                 # update G again - Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
                 loss_g, _, sum_g = self.sess.run([self.loss_G, opt_g, self.G_sum_op],
-                                                 feed_dict={self.z: batch_zs,
-                                                            lr_g: this_lr_g})
-                total_loss_g += loss_g
-                n_loss_g += 1
+                                                 feed_dict={self.z: batch_zs})
+                # total_loss_g += loss_g
+                # n_loss_g += 1
                 self.writer.add_summary(sum_g, step_i)
 
                 step_i += 1
                 counter += 1
-                print('Epoch: [%2d] [%3d/%3d] time: %4.4f d = lr: %0.08f, loss: %08.06f,  ' %
-                      (epoch, idx, batch_idxs, time.time() - start_time, this_lr_d, loss_d) +
-                      'g* = lr: %0.08f, loss: %08.06f' % (this_lr_g, loss_g))
+                print('Epoch: [%2d] [%3d/%3d] time: %4.4f d loss: %08.06f,  ' %
+                      (epoch, idx, batch_idxs, time.time() - start_time, loss_d) +
+                      'g* = loss: %08.06f' % loss_g)
 
                 if np.mod(counter, self.sample_step) == 0:
                     samples, d_loss, g_loss = self.sess.run(
