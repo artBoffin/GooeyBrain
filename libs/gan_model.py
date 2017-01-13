@@ -42,6 +42,13 @@ class Parameter(object):
 class GAN(object):
     parameters = [
         Parameter("files_path", "./data", str, description="path to files", is_path=True),
+        Parameter("convolutional", True, bool, description="is convolutional network (true for DCGAN)"),
+        Parameter("is_grayscale", False, bool, description="is image grayscale? (default rgb)"),
+        Parameter("input_h", 64, int, 1, 1000, 1, "height of input image"),
+        Parameter("input_w", 64, int, 1, 1000, 1, "width of input image"),
+        Parameter("output_h", 64, int, 1, 1000, 1, "height of output image"),
+        Parameter("output_w", 64, int, 1, 1000, 1, "width of output image"),
+        Parameter("crop_factor", 1.0, float, 0.01, 1, 0.01, "percentage of image to crop (zoom in)"),
         Parameter("learning_rate", 0.0002, p_type=float, p_min=0.00000001, p_max=0.01, step=0.00000001,
                   description="leraning rate"),
         Parameter("beta1", 0.5, p_type=float, p_min=0.0, p_max=1, step=0.0001, description="beta1 for Adam Optimizer"),
@@ -49,20 +56,13 @@ class GAN(object):
         Parameter("n_epochs", 25, int, 1, 500, 1, "number of epochs"),
         Parameter("n_examples", 64, int, 1, 200, 1, "number of examples (sample size)"),
         Parameter("z_dim", 100, int, 1, 1000, 1, "size of z input (number of latent inputs for generator)"),
-        Parameter("input_h", 64, int, 1, 1000, 1, "height of input image"),
-        Parameter("input_w", 64, int, 1, 1000, 1, "width of input image"),
-        Parameter("output_h", 64, int, 1, 1000, 1, "height of output image"),
-        Parameter("output_w", 64, int, 1, 1000, 1, "width of output image"),
-        Parameter("is_grayscale", False, bool, description="is image grayscale? (default rgb)"),
-        Parameter("crop_factor", 1.0, float, 0.01, 1, 0.01, "percentage of image to crop (zoom in)"),
-        Parameter("convolutional", True, bool, description="is convolutional network (true for DCGAN)"),
         Parameter("n_features", 32, int, 1, 512, 1, "Number of channels to use in the last hidden layer"),
-        Parameter("save_path", "./tmp", str, description="path to sve model files", is_path=True),
-        Parameter("run_name", "gan_%s" % time.strftime("%Y%m%d-%H%M%S"), str,
-                  description="name of this run for creating relevant folders"),
         Parameter("sample_step", 5, int, 1, 1000, 1, "save sample images every X steps"),
         Parameter("save_step", 50, int, 1, 1000, 1, "save model file every X steps"),
-        Parameter("train_size", np.inf, int, 1, np.inf, 1, "limit the files to use for training?")
+        #Parameter("train_size", float("inf"), float, 1, float("inf"), 1, "limit the files to use for training?")
+        Parameter("save_path", "./tmp", str, description="path to sve model files", is_path=True),
+        Parameter("run_name", "gan_%s" % time.strftime("%Y%m%d-%H%M%S"), str,
+                  description="name of this run for creating relevant folders")
     ]
 
     def __init__(self, sess, params):
@@ -74,7 +74,7 @@ class GAN(object):
             dfc_dim: (optional) Dimension of discrim units for fully connected layer. [1024]
 
         """
-        self.train_size = params['train_size']
+        self.train_size = float("inf")
 
         self.sess = sess
         self.image_size = params['input_h']
@@ -100,7 +100,7 @@ class GAN(object):
         self.sample_step = params['sample_step']
         self.save_step = params['save_step']
 
-        self.tensorboard_dir = os.path.join(self.save_path, self.run_name, 'logs')
+        self.tensorboard_dir = params['tensorboard_dir'] if 'tensorboard_dir' in params else os.path.join(self.save_path, self.run_name, 'logs')
         self.sample_dir = self.model_dir = os.path.join(self.save_path, self.run_name, 'model')
         self.checkpoint_dir = os.path.join(self.save_path, self.run_name, 'ckpt')
         paths = [self.tensorboard_dir, self.model_dir, self.checkpoint_dir]

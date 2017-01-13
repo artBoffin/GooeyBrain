@@ -56,14 +56,14 @@ class ParameterText extends React.Component {
     render() {
         const value = this.props.value;
         return (
-        <Textfield
-            onChange={this.handleChange}
-            pattern="-?[0-9]*(\.[0-9]+)?"
-            error="Input is not a number!"
-            style={{width: '50px'}}
-            label={''}
-            value={this.props.value}
-        />
+            <Textfield
+                onChange={this.handleChange}
+                pattern="-?[0-9]*(\.[0-9]+)?"
+                error="Input is not a number!"
+                style={{width: '50px'}}
+                label={''}
+                value={this.props.value}
+            />
         );
     }
 
@@ -102,10 +102,68 @@ class ParameterToggleRow extends React.Component{
         const name = this.props.parameter.name;
         const value = this.props.parameter.value;
         return (
-                <tr>
+            <tr>
                 <td>{name}</td>
                 <td>
                     <Switch id={name} checked={value} onChange={this.handleChange}>{value}</Switch>
+                </td>
+            </tr>
+        );
+    }
+}
+
+class ParameterPathRow extends React.Component{
+    constructor(props) {
+        super(props);
+        this.handleChange = this.handleChange.bind(this);
+    }
+
+    handleChange(e) {
+        this.props.onChange(e.target.checked, this.props.idx);
+    }
+
+    componentDidMount () {
+        this._inp.directory = true;
+        this._inp.webkitdirectory = true;
+    }
+
+    render() {
+        const name = this.props.parameter.name;
+        const value = this.props.parameter.value;
+        const printName = name.replace(/_/g, ' ');
+        return (
+            <tr>
+                <td>Path : {printName}</td>
+                <td>
+                    <Textfield label="" id={name} value={value} onChange={this.handleChange}/>
+                    <div className="mdl-button mdl-button--primary mdl-button--icon mdl-button--file">
+                        <i className="material-icons">attach_file</i>
+                        <input type="file" id="uploadBtn" ref={i => this._inp = i}/>
+                    </div>
+                </td>
+            </tr>
+        );
+    }
+}
+
+
+class ParameterTextRow extends React.Component{
+    constructor(props) {
+        super(props);
+        this.handleChange = this.handleChange.bind(this);
+    }
+
+    handleChange(e) {
+        this.props.onChange(e.target.checked, this.props.idx);
+    }
+    render() {
+        const name = this.props.parameter.name;
+        const value = this.props.parameter.value;
+        return (
+            <tr>
+                <td>{name}</td>
+                <td>
+                    <Textfield label="" id={name} value={value} onChange={this.handleChange}/>
                 </td>
             </tr>
         );
@@ -133,6 +191,12 @@ class ParametersList extends React.Component {
             else if (parameter.type==='bool') {
                 curr_row=<ParameterToggleRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>;
             }
+            // else if (parameter.type==='str' && parameter.is_path) {
+            //     curr_row=<ParameterPathRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>;
+            // }
+            else if (parameter.type==='str') {
+                curr_row=<ParameterTextRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>;
+            }
             rows.push(curr_row);
         });
         return (
@@ -157,12 +221,12 @@ class TrainingForm extends React.Component{
         this.handleTrain = this.handleTrain.bind(this);
         this.handleSave = this.handleSave.bind(this);
     }
-        componentDidMount() {
+    componentDidMount() {
         $.getJSON('/api/get_def_parameters')
             .then((params)=>{
                 this.setState({data:params.GAN});
             });
-        };
+    };
 
     handleSingleParameterChange(value, parameterIdx) {
         let newParameters = this.state.data;
@@ -189,20 +253,20 @@ class TrainingForm extends React.Component{
     render() {
         return(
             <div>
-                    <Grid>
-                        <Cell col={12} >
-                            <h4> Model Parameters </h4>
-                            <ParametersList parameters={this.state.data} onChange={this.handleSingleParameterChange} />
-                        </Cell>
-                    </Grid>
-                    <Grid>
-                        <Cell col={6} >
-                            <TrainButton handleTrain={this.handleTrain} disabled={this.props.isTraining}/>
-                        </Cell>
-                        <Cell col={6} >
-                            <Button raised accent ripple onClick={this.handleSave}>Save Parameters</Button>
-                        </Cell>
-                    </Grid>
+                <Grid>
+                    <Cell col={12} >
+                        <h4> Model Parameters </h4>
+                        <ParametersList parameters={this.state.data} onChange={this.handleSingleParameterChange} />
+                    </Cell>
+                </Grid>
+                <Grid>
+                    <Cell col={6} >
+                        <TrainButton handleTrain={this.handleTrain} disabled={this.props.isTraining}/>
+                    </Cell>
+                    <Cell col={6} >
+                        <Button raised accent ripple onClick={this.handleSave}>Save Parameters</Button>
+                    </Cell>
+                </Grid>
             </div>
         )
     }
@@ -255,7 +319,7 @@ var IframeComponent=React.createClass({
 
         return(
             <div>
-            { view }
+                { view }
             </div>
         );
     }
@@ -295,26 +359,27 @@ class TrainWindow extends React.Component {
 
     render() {
         return(
-        <Grid>
-        <Cell col={4} shadow={4}>
-            <TrainingForm isTraining={this.state.isTraining}/>
-        </Cell>
-        <Cell col={8}>
-            <IframeComponent iframe='iframe' src="http://127.0.0.1:6006" height="100%" width="100%" isTraining={this.state.tensorborad}/>
-            </Cell>
-        </Grid>
+            <Grid>
+                <Cell col={4} shadow={4}>
+                    <TrainingForm isTraining={this.state.isTraining}/>
+                </Cell>
+                <Cell col={8}>
+                    <IframeComponent iframe='iframe' src="http://127.0.0.1:6006" height="100%" width="100%" isTraining={this.state.tensorborad}/>
+                </Cell>
+            </Grid>
         )
     }
 }
 
 function train(inputParameters){
+    console.log("train!")
     $.ajax({
-        url: '/api/dcgan',
+        url: '/api/train',
         method: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(inputParameters),
         success: (data) => {
-           console.log(data)
+            console.log(data)
         }
     });
 }
@@ -329,15 +394,15 @@ class App extends Component {
 
     render() {
         return (
-        <div>
-            <Layout fixedHeader>
-                <Header title="GooeyBrain" className="mdl-color--teal-800">
-                </Header>
-                <Content>
-                    <TrainWindow/>
-                </Content>
-            </Layout>
-        </div>
+            <div>
+                <Layout fixedHeader>
+                    <Header title="GooeyBrain" className="mdl-color--teal-800">
+                    </Header>
+                    <Content>
+                        <TrainWindow/>
+                    </Content>
+                </Layout>
+            </div>
         );
     }
 }

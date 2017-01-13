@@ -3,9 +3,8 @@ import json
 
 import os
 import subprocess
-import libs.GAN
-# import libs.autoencoder as vae
 import time
+import libs.gan_model
 
 # webapp
 app = Flask(__name__,static_folder='app/static', template_folder='app/templates')
@@ -19,17 +18,39 @@ global tensor_board
 training_process = None
 tensor_board = None
 
+def save_parameters_file(parameters):
+    # save parameters to temp txt file
+    save_path = "./tmp"
+    run_name = ""
+    tensorboard_dir = "./tmp/logs"
+    for p in parameters:
+        if p['name']=="save_path":
+            save_path = p['value']
+        if p['name']=="run_name":
+            run_name = p['value']
 
-@app.route('/api/dcgan', methods=['POST'])
+    tensorboard_dir = os.path.join(save_path, run_name, 'logs')
+    parameters.append({'name': 'tensorboard_dir', 'value':tensorboard_dir})
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    parameters_filename = "parameters%s" % time.strftime("%Y%m%d-%H%M%S")
+    parameters_filepath = os.path.join(save_path, run_name,  parameters_filename)
+    with open(parameters_filepath, 'w') as f:
+        json.dump(parameters, f)
+    return parameters_filepath, tensorboard_dir
+
+@app.route('/api/train', methods=['POST'])
 def dcegan():
     global training_process
     global tensor_board
     arr = request.json
-    print arr
-    # flags = ["--%s %s"%(x['name'], x['value']) for x in arr]
-    # cmd = ' '.join(['python', 'libs/run_tf.py']+flags)
-    # training_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # tensor_board = subprocess.Popen('tensorboard --logdir=logs',shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    parameters_filepath, tensorboard_dir = save_parameters_file(arr)
+
+    # call the tensorflow train with the file as flag
+    cmd = ' '.join(['python', 'run_tf.py', '--parameters_file', parameters_filepath])
+    training_process = subprocess.Popen(cmd, shell=True) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    tensor_board = subprocess.Popen('tensorboard --logdir=%s'%tensorboard_dir,shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     # print "started train and tensor board"
     return jsonify({'results':"trainig now!"})
 
@@ -53,46 +74,9 @@ def is_training():
 def get_parameters():
     params = dict()
     params['GAN'] = []
-    for p in libs.GAN.GAN.parameters:
+    for p in libs.gan_model.GAN.parameters:
         params['GAN'].append(p.getJson())
     return jsonify(params)
-
-
-    global training_process
-    global tensor_board
-    training = False
-    tensorboard = False
-    out = " "
-    if training_process is not None:
-        #out = training_process.stdout.readline()
-        training = True
-    if tensor_board is not None:
-        tensorboard = True
-    return jsonify({"training":training,"tensorboard":tensorboard, "out":out})
-
-# @app.route('/api/vaegan', methods=['POST'])
-# def vaegan():
-#     arr = request.json
-#     print request.json
-#
-#     p = {x['name']: x['value'] for x in arr}
-#     vae.train_vaegan(p['files'],
-#                          learning_rate=p['learning_rate'],
-#                          batch_size=p['batch_size'],
-#                          n_epochs=p['n_epochs'],
-#                          n_examples=p['n_examples'],
-#                          input_shape=p['input_shape'],
-#                          crop_shape=p['crop_shape'],
-#                          crop_factor=p['crop_factor'],
-#                          n_filters=p['n_filters'],
-#                          n_hidden=p['n_hidden'],
-#                          n_code=p['n_code'],
-#                          convolutional=p['convolutional'],
-#                          variational=p['variational'],
-#                          filter_sizes=p['filter_sizes'],
-#                          activation=p['activation'],
-#                          ckpt_name=p['ckpt_name'])
-#     return jsonify(results="trainig now!")
 
 @app.route('/api/save_parameters', methods=['POST'])
 def save():
@@ -115,6 +99,3 @@ def index():
     return render_template('index.html')
 
 # models - GAN (for DCGAN set convolutional=true, VAE, VAEGAN, DRAW?)
-
-    #for running tensor board:
-#     call('tensorboard --logdir=logs')

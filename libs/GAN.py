@@ -615,21 +615,6 @@ def discriminator(x, phase_train, convolutional=True, n_features=32, reuse=False
                        output_activation=output_activation,
                        reuse=reuse)
 
-
-def parse_arguments(parameters):
-    parser = argparse.ArgumentParser(description='Calling GAN model')
-    for p in parameters:
-        name = '--%s' % p.name
-        nargs = '?'
-        if type == list:
-            nargs = '+'
-            if not p.size_change:
-                nargs = str(len(p.value))
-        parser.add_argument(name, type=p.type, nargs=nargs, deafult=p.value,
-                            help=p.description)
-    return parser
-
-
 def save(model, step):
     model_name = model.run_name
     checkpoint_dir = model.checkpoint_dir
