@@ -349,7 +349,7 @@ class TrainWindow extends React.Component {
     componentDidMount() {
         this.timerID = setInterval(
             () => this.setTrainingStatus(),
-            200
+            15000 // query 4 times in a second
         );
     }
 
