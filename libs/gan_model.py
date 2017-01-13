@@ -4,9 +4,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from libs.dataset_utils import create_input_pipeline
 from libs.utils import *
-from glob import glob
 
 
 class Parameter(object):
@@ -55,7 +53,7 @@ class GAN(object):
         Parameter("input_w", 64, int, 1, 1000, 1, "width of input image"),
         Parameter("output_h", 64, int, 1, 1000, 1, "height of output image"),
         Parameter("output_w", 64, int, 1, 1000, 1, "width of output image"),
-        Parameter("rgb", True, bool, description="is image rgb or greyscale"),
+        Parameter("is_grayscale", False, bool, description="is image grayscale? (default rgb)"),
         Parameter("crop_factor", 1.0, float, 0.01, 1, 0.01, "percentage of image to crop (zoom in)"),
         Parameter("convolutional", True, bool, description="is convolutional network (true for DCGAN)"),
         Parameter("n_features", 32, int, 1, 512, 1, "Number of channels to use in the last hidden layer"),
@@ -63,26 +61,20 @@ class GAN(object):
         Parameter("run_name", "gan_%s" % time.strftime("%Y%m%d-%H%M%S"), str,
                   description="name of this run for creating relevant folders"),
         Parameter("sample_step", 5, int, 1, 1000, 1, "save sample images every X steps"),
-        Parameter("save_step", 50, int, 1, 1000, 1, "save model file every X steps")
+        Parameter("save_step", 50, int, 1, 1000, 1, "save model file every X steps"),
+        Parameter("train_size", np.inf, int, 1, np.inf, 1, "limit the files to use for training?")
     ]
 
     def __init__(self, sess, params):
         """
         Args:
-            sess: TensorFlow session
-            batch_size: The size of batch. Should be specified before training.
-            output_size: (optional) The resolution in pixels of the images. [64]
-            y_dim: (optional) Dimension of dim for y. [None]
-            z_dim: (optional) Dimension of dim for Z. [100]
-
             gf_dim: (optional) Dimension of gen filters in first conv layer. [64]
             df_dim: (optional) Dimension of discrim filters in first conv layer. [64]
             gfc_dim: (optional) Dimension of gen units for for fully connected layer. [1024]
             dfc_dim: (optional) Dimension of discrim units for fully connected layer. [1024]
 
-            c_dim: (optional) Dimension of image color. For grayscale input, set to 1. [3]
         """
-        self.train_size = np.inf
+        self.train_size = params['train_size']
 
         self.sess = sess
         self.image_size = params['input_h']
@@ -96,18 +88,12 @@ class GAN(object):
         self.sample_size = params['n_examples']
         self.z_dim = params['z_dim']
         self.n_features = params['n_features']
-        self.rgb = params['rgb']
-        self.n_channels = 3 if self.rgb else 1
-
-        self.c_dim = self.n_channels
-        self.is_grayscale = not self.rgb
-
+        self.is_grayscale = params['is_grayscale']
+        self.n_channels = 1 if self.is_grayscale else 3
         self.input_shape = [params['input_h'], params['input_w'], self.n_channels]
         self.output_shape = [params['output_h'], params['output_w'], self.n_channels]
         self.crop_factor = params['crop_factor']
-
         self.is_crop = self.crop_factor != 1
-
         self.convolutional = params['convolutional']
         self.save_path = params['save_path']
         self.run_name = params['run_name']
@@ -130,14 +116,12 @@ class GAN(object):
         self.images = tf.placeholder(tf.float32,
                                      [self.batch_size] + self.output_shape,
                                      name='real_images')
+        self.images = (self.images / 127.5) - 1.0
 
-        self.sample_images = tf.placeholder(tf.float32,
-                                            [self.sample_size] + self.output_shape,
-                                            name='sample_images')
         self.z = tf.placeholder(tf.float32, [None, self.z_dim],
                                 name='z')
 
-        self.z_sum = histogram_summary("z", self.z)
+        self.sum_z = tf.summary.histogram("z", self.z)
 
         # Generator tries to recreate input samples using latent feature vector
         self.G = generator(
@@ -157,36 +141,35 @@ class GAN(object):
 
         self.sampler = generator(self.z, phase_train=True, reuse=False, scope_name='sampler')
 
-        self.sum_D_real = tf.summary.histogram("D_real", self.D_real)
-        self.sum_D_fake = tf.summary.histogram("D_fake", self.D_fake)
-        self.sum_G = image_summary("G", self.G)
-
         with tf.variable_scope('loss'):
-
             self.loss_D_real = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(self.D_real_logits, tf.ones_like(self.D_real)))
             self.loss_D_fake = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(self.D_fake_logits, tf.zeros_like(self.D_fake)))
+
             self.loss_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_fake_logits, tf.ones_like(self.D_fake)))
 
             self.loss_D = self.loss_D_real + self.loss_D_fake
 
-            #summaries
-            self.sum_loss_D_real = tf.summary.histogram("loss_D_real", self.loss_D_real)
-            self.sum_loss_D_fake = tf.summary.histogram("loss_D_fake", self.loss_D_fake)
-            self.sum_loss_D = tf.summary.scalar("loss_D", self.loss_D)
-            self.sum_loss_G = tf.summary.scalar("loss_G", self.loss_G)
+        # Summaries
+        self.sum_G = tf.summary.image("G", self.G)
+        self.sum_D_real = tf.summary.histogram("D_real", self.D_real)
+        self.sum_D_fake = tf.summary.histogram("D_fake", self.D_fake)
+
+        self.sum_loss_D_real = tf.summary.scalar("loss_D_real", self.loss_D_real)
+        self.sum_loss_D_fake = tf.summary.scalar("loss_D_fake", self.loss_D_fake)
+        self.sum_loss_D = tf.summary.scalar("loss_D", self.loss_D)
+        self.sum_loss_G = tf.summary.scalar("loss_G", self.loss_G)
 
         t_vars = tf.trainable_variables()
 
-        self.d_vars = [v for v in t_vars if v.name.startswith('discriminator')]
-        self.g_vars = [v for v in t_vars if v.name.startswith('generator')]
+        self.vars_d = [v for v in t_vars if v.name.startswith('discriminator')]
+        self.vars_g = [v for v in t_vars if v.name.startswith('generator')]
 
         self.saver = tf.train.Saver()
 
     def train(self):
-        """Train DCGAN"""
-        print (" [* ] training!")
+        print (" [* ] starting train")
         files = []
         img_types = ['.jpg', '.jpeg', '.png']
         for root, dirnames, filenames in os.walk('./data/1'):
@@ -194,30 +177,42 @@ class GAN(object):
                 if any([filename.endswith(type_str) for type_str in img_types]):
                     files.append(os.path.join(root, filename))
         data = files
-        # np.random.shuffle(data)
-        print (len(data))
+        np.random.shuffle(data)
+        print ("input data: %d files"%len(data))
 
+        init_lr_g = self.learning_rate
+        init_lr_d = self.learning_rate
 
-        d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
-            .minimize(self.loss_D, var_list=self.d_vars)
-        g_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
-            .minimize(self.loss_G, var_list=self.g_vars)
+        lr_g = tf.placeholder(tf.float32, shape=[], name='learning_rate_g')
+        lr_d = tf.placeholder(tf.float32, shape=[], name='learning_rate_d')
+
         try:
-            tf.initialize_all_variables().run()
+            from tf.contrib.layers import apply_regularization
+            d_reg = apply_regularization(
+                tf.contrib.layers.l2_regularizer(1e-6), self.vars_d)
+            g_reg = apply_regularization(
+                tf.contrib.layers.l2_regularizer(1e-6), self.vars_g)
         except:
-            init_op = tf.global_variables_initializer()
-            self.sess.run(init_op)
+            d_reg, g_reg = 0, 0
 
-        self.g_sum = merge_summary([self.z_sum, self.sum_D_fake,
-            self.sum_G, self.sum_loss_D_fake, self.sum_loss_G])
-        self.d_sum = merge_summary([self.z_sum,
-                                         self.sum_D_real,
-                                         self.sum_loss_D_real,
-                                         self.sum_loss_D])
+        opt_g = tf.train.AdamOptimizer(lr_g, name='Adam_g').minimize(
+            self.loss_G + g_reg, var_list=self.vars_g)
+        opt_d = tf.train.AdamOptimizer(lr_d, name='Adam_d').minimize(
+            self.loss_D + d_reg, var_list=self.vars_d)
 
-        self.writer = SummaryWriter("./tmp/dcgan/logs", self.sess.graph)
+        self.sess.run(tf.global_variables_initializer())
+        self.sess.run(tf.local_variables_initializer())
 
-        sample_z = np.random.uniform(-1, 1, size=(self.sample_size, self.z_dim))
+        self.G_sum_op = tf.summary.merge([self.sum_z, self.sum_D_fake,
+                                          self.sum_G, self.sum_loss_D_fake, self.sum_loss_G])
+        self.D_sum_op = tf.summary.merge([self.sum_z,
+                                          self.sum_D_real,
+                                          self.sum_loss_D_real,
+                                          self.sum_loss_D])
+
+        self.writer = tf.summary.FileWriter(self.tensorboard_dir, self.sess.graph)
+
+        zs= np.random.uniform(-1, 1, size=(self.sample_size, self.z_dim))
 
         sample_files = data[0:self.sample_size]
         sample = [get_image(sample_file, self.image_size, is_crop=self.is_crop, resize_w=self.output_size,
@@ -227,94 +222,95 @@ class GAN(object):
         else:
             sample_images = np.array(sample).astype(np.float32)
 
+        save_images(sample_images, [8, 8],
+                    '{}/test_samples.png'.format(self.model_dir))
+
         counter = 1
         start_time = time.time()
 
-        if self.load(self.checkpoint_dir):
+        if self.load():
             print(" [*] Load SUCCESS")
         else:
             print(" [!] Load failed...")
 
+        step_i, t_i = 0, 0
+        loss_d = 1
+        loss_g = 1
+        n_loss_d, total_loss_d = 1, 1
+        n_loss_g, total_loss_g = 1, 1
         for epoch in xrange(self.n_epochs):
-            files = []
-            img_types = ['.jpg', '.jpeg', '.png']
-            for root, dirnames, filenames in os.walk(self.files_path):
-                for filename in filenames:
-                    if any([filename.endswith(type_str) for type_str in img_types]):
-                        files.append(os.path.join(root, filename))
-            data = files
             batch_idxs = min(len(data), self.train_size) // self.batch_size
-
+            np.random.shuffle(data)
             for idx in xrange(0, batch_idxs):
-                batch_files = data[idx * self.batch_size:(idx + 1) * self.batch_size]
+                batch_files = data[idx*self.batch_size:(idx+1)*self.batch_size]
                 batch = [get_image(batch_file, self.image_size, is_crop=self.is_crop, resize_w=self.output_size,
                                    is_grayscale=self.is_grayscale) for batch_file in batch_files]
                 if (self.is_grayscale):
-                    batch_images = np.array(batch).astype(np.float32)[:, :, :, None]
+                    batch_xs = np.array(batch).astype(np.float32)[:, :, :, None]
                 else:
-                    batch_images = np.array(batch).astype(np.float32)
+                    batch_xs = np.array(batch).astype(np.float32)
+                batch_zs = np.random.uniform(
+                    -1.0, 1.0, [self.batch_size, self.z_dim]).astype(np.float32)
 
-                batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]) \
-                    .astype(np.float32)
+                this_lr_g = min(1e-2, max(1e-6, init_lr_g * (loss_g / loss_d) ** 2))
+                this_lr_d = min(1e-2, max(1e-6, init_lr_d * (loss_d / loss_g) ** 2))
 
                 # Update D network
-                _, summary_str = self.sess.run([d_optim, self.d_sum],
-                                               feed_dict={self.images: batch_images, self.z: batch_z})
-                self.writer.add_summary(summary_str, counter)
+                loss_d, _, sum_d = self.sess.run([self.loss_D, opt_d, self.D_sum_op],
+                                                 feed_dict={self.images: batch_xs,
+                                                            self.z: batch_zs,
+                                                            lr_d: this_lr_d})
+                total_loss_d += loss_d
+                n_loss_d += 1
+                self.writer.add_summary(sum_d, step_i)
 
                 # Update G network
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.z: batch_z})
-                self.writer.add_summary(summary_str, counter)
+                loss_g, _, sum_g = self.sess.run([self.loss_G, opt_g, self.G_sum_op],
+                                                 feed_dict={self.z: batch_zs,
+                                                            lr_g: this_lr_g})
+                total_loss_g += loss_g
+                n_loss_g += 1
+                self.writer.add_summary(sum_g, step_i)
 
-                # Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.z: batch_z})
-                self.writer.add_summary(summary_str, counter)
+                # update G again - Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
+                loss_g, _, sum_g = self.sess.run([self.loss_G, opt_g, self.G_sum_op],
+                                                 feed_dict={self.z: batch_zs,
+                                                            lr_g: this_lr_g})
+                total_loss_g += loss_g
+                n_loss_g += 1
+                self.writer.add_summary(sum_g, step_i)
 
-                errD_fake = self.loss_D_fake.eval({self.z: batch_z})
-                errD_real = self.loss_D_real.eval({self.images: batch_images})
-                errG = self.loss_G.eval({self.z: batch_z})
-
+                step_i += 1
                 counter += 1
-                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
-                      % (epoch, idx, batch_idxs,
-                         time.time() - start_time, errD_fake + errD_real, errG))
+                print('Epoch: [%2d] [%3d/%3d] time: %4.4f d = lr: %0.08f, loss: %08.06f,  ' %
+                      (epoch, idx, batch_idxs, time.time() - start_time, this_lr_d, loss_d) +
+                      'g* = lr: %0.08f, loss: %08.06f' % (this_lr_g, loss_g))
 
-                if np.mod(counter, 5) == 1:
+                if np.mod(counter, self.sample_step) == 0:
                     samples, d_loss, g_loss = self.sess.run(
                         [self.sampler, self.loss_D, self.loss_G],
-                        feed_dict={self.z: sample_z, self.images: sample_images}
+                        feed_dict={self.z: zs, self.images: sample_images}
                     )
                     save_images(samples, [8, 8],
-                                './{}/train_{:02d}_{:04d}.png'.format(self.sample_dir, epoch, idx))
+                                '{}/train_{:02d}_{:04d}.png'.format(self.model_dir, epoch, idx))
                     print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
+                    t_i += 1
 
-                if np.mod(counter, 500) == 2:
-                    self.save(self.checkpoint_dir, counter)
+                if np.mod(counter, self.save_step) == 0:
+                    self.save(counter)
 
-    def save(self, checkpoint_dir, step):
-        model_name = "DCGAN.model"
-        model_dir = "%s_%s_%s" % (self.run_name, self.batch_size, self.output_size)
-        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
-
-        if not os.path.exists(checkpoint_dir):
-            os.makedirs(checkpoint_dir)
-
+    def save(self, step):
         self.saver.save(self.sess,
-                        os.path.join(checkpoint_dir, model_name),
+                        os.path.join(self.checkpoint_dir, self.run_name),
                         global_step=step)
 
-    def load(self, checkpoint_dir):
+    def load(self):
         print(" [*] Reading checkpoints...")
 
-        model_dir = "%s_%s_%s" % (self.run_name, self.batch_size, self.output_size)
-        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
-
-        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+        ckpt = tf.train.get_checkpoint_state(self.checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
             ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-            self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+            self.saver.restore(self.sess, os.path.join(self.checkpoint_dir, ckpt_name))
             print(" [*] Success to read {}".format(ckpt_name))
             return True
         else:
