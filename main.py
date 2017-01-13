@@ -31,10 +31,11 @@ def save_parameters_file(parameters):
 
     tensorboard_dir = os.path.join(save_path, run_name, 'logs')
     parameters.append({'name': 'tensorboard_dir', 'value':tensorboard_dir})
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
+    curr_dir = os.path.join(save_path, run_name)
+    if not os.path.exists(curr_dir):
+        os.makedirs(curr_dir)
     parameters_filename = "parameters%s" % time.strftime("%Y%m%d-%H%M%S")
-    parameters_filepath = os.path.join(save_path, run_name,  parameters_filename)
+    parameters_filepath = os.path.join(curr_dir,  parameters_filename)
     with open(parameters_filepath, 'w') as f:
         json.dump(parameters, f)
     return parameters_filepath, tensorboard_dir
