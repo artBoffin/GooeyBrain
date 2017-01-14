@@ -5,6 +5,7 @@ import os
 import subprocess
 import time
 import libs.gan_model
+import libs.dcgan_model
 
 # webapp
 app = Flask(__name__,static_folder='app/static', template_folder='app/templates')
@@ -75,7 +76,7 @@ def is_training():
 def get_parameters():
     params = dict()
     params['GAN'] = []
-    for p in libs.gan_model.GAN.parameters:
+    for p in libs.dcgan_model.DCGAN.parameters:
         params['GAN'].append(p.getJson())
     return jsonify(params)
 

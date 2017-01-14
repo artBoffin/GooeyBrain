@@ -3,6 +3,7 @@ import json
 import tensorflow as tf
 from pprint import pprint
 from libs.gan_model import GAN
+from libs.dcgan_model import DCGAN
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -18,7 +19,7 @@ def main(_):
 
     pprint(params)
     with tf.Session() as sess:
-        dcgan = GAN(sess,params)
+        dcgan = DCGAN(sess,params)
         dcgan.train()
 
 if __name__ == '__main__':
