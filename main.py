@@ -19,7 +19,7 @@ training_process = None
 tensor_board = None
 
 def save_parameters_file(parameters):
-    # save parameters to temp txt file
+    # save parameters to temp txt files
     save_path = "./tmp"
     run_name = ""
     tensorboard_dir = "./tmp/logs"

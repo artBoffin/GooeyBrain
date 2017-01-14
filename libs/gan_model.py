@@ -81,24 +81,24 @@ class GAN(object):
         self.output_size = params['output_h']
 
         self.files_path = params['files_path']
-        self.learning_rate = params['learning_rate']
-        self.beta1 = params['beta1']
-        self.batch_size = params['batch_size']
-        self.n_epochs = params['n_epochs']
-        self.sample_size = params['n_examples']
-        self.z_dim = params['z_dim']
-        self.n_features = params['n_features']
+        self.learning_rate = float(params['learning_rate'])
+        self.beta1 = float(params['beta1'])
+        self.batch_size = int(params['batch_size'])
+        self.n_epochs = int(params['n_epochs'])
+        self.sample_size = int(params['n_examples'])
+        self.z_dim = int(params['z_dim'])
+        self.n_features = int(params['n_features'])
         self.is_grayscale = params['is_grayscale']
         self.n_channels = 1 if self.is_grayscale else 3
-        self.input_shape = [params['input_h'], params['input_w'], self.n_channels]
-        self.output_shape = [params['output_h'], params['output_w'], self.n_channels]
-        self.crop_factor = params['crop_factor']
+        self.input_shape = [int(params['input_h']), int(params['input_w']), self.n_channels]
+        self.output_shape = [int(params['output_h']), int(params['output_w']), self.n_channels]
+        self.crop_factor = float(params['crop_factor'])
         self.is_crop = self.crop_factor != 1
         self.convolutional = params['convolutional']
         self.save_path = params['save_path']
         self.run_name = params['run_name']
-        self.sample_step = params['sample_step']
-        self.save_step = params['save_step']
+        self.sample_step = int(params['sample_step'])
+        self.save_step = int(params['save_step'])
 
         self.tensorboard_dir = params['tensorboard_dir'] if 'tensorboard_dir' in params else os.path.join(self.save_path, self.run_name, 'logs')
         self.sample_dir = self.model_dir = os.path.join(self.save_path, self.run_name, 'model')
