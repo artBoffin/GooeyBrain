@@ -92,6 +92,12 @@ class GAN(object):
         self.n_channels = 1 if self.is_grayscale else 3
         self.input_shape = [int(params['input_h']), int(params['input_w']), self.n_channels]
         self.output_shape = [int(params['output_h']), int(params['output_w']), self.n_channels]
+
+        self.input_height = int(params['input_h'])
+        self.input_width = int(params['input_w'])
+        self.output_height = int(params['output_h'])
+        self.output_width = int(params['output_w'])
+
         self.crop_factor = float(params['crop_factor'])
         self.is_crop = self.crop_factor != 1
         self.convolutional = params['convolutional']
@@ -116,7 +122,6 @@ class GAN(object):
         self.images = tf.placeholder(tf.float32,
                                      [self.batch_size] + self.output_shape,
                                      name='real_images')
-        self.images = (self.images / 127.5) - 1.0
 
         self.z = tf.placeholder(tf.float32, [None, self.z_dim],
                                 name='z')
@@ -139,7 +144,7 @@ class GAN(object):
                                                         convolutional=self.convolutional,
                                                         reuse=True)
 
-        self.sampler = generator(self.z, phase_train=True, reuse=False, scope_name='sampler')
+        self.sampler = generator(self.z, phase_train=False, reuse=False, scope_name='sampler')
 
         with tf.variable_scope('loss'):
             self.loss_D_real = tf.reduce_mean(
@@ -180,9 +185,9 @@ class GAN(object):
         np.random.shuffle(data)
         print ("input data: %d files"%len(data))
 
-        opt_g = tf.train.AdamOptimizer(self.learning_rate, name='Adam_g').minimize(
+        opt_g = tf.train.AdamOptimizer(self.learning_rate, name='Adam_g', beta1=self.beta1).minimize(
             self.loss_G, var_list=self.vars_g)
-        opt_d = tf.train.AdamOptimizer(self.learning_rate, name='Adam_d').minimize(
+        opt_d = tf.train.AdamOptimizer(self.learning_rate, name='Adam_d', beta1=self.beta1).minimize(
             self.loss_D, var_list=self.vars_d)
 
         self.sess.run(tf.global_variables_initializer())
@@ -200,7 +205,10 @@ class GAN(object):
         zs= np.random.uniform(-1, 1, size=(self.sample_size, self.z_dim))
 
         sample_files = data[0:self.sample_size]
-        sample = [get_image(sample_file, self.image_size, is_crop=self.is_crop, resize_w=self.output_size,
+        sample = [get_image(sample_file,
+                            self.image_size,
+                            is_crop=self.is_crop,
+                            resize_w=self.output_size,
                             is_grayscale=self.is_grayscale) for sample_file in sample_files]
         if (self.is_grayscale):
             sample_images = np.array(sample).astype(np.float32)[:, :, :, None]
@@ -225,15 +233,19 @@ class GAN(object):
         # n_loss_g, total_loss_g = 1, 1
         for epoch in xrange(self.n_epochs):
             batch_idxs = min(len(data), self.train_size) // self.batch_size
-            np.random.shuffle(data)
+            #np.random.shuffle(data)
             for idx in xrange(0, batch_idxs):
                 batch_files = data[idx*self.batch_size:(idx+1)*self.batch_size]
-                batch = [get_image(batch_file, self.image_size, is_crop=self.is_crop, resize_w=self.output_size,
+                batch = [get_image(batch_file,
+                                   self.image_size,
+                                   is_crop=self.is_crop,
+                                   resize_w=self.output_size,
                                    is_grayscale=self.is_grayscale) for batch_file in batch_files]
                 if (self.is_grayscale):
                     batch_xs = np.array(batch).astype(np.float32)[:, :, :, None]
                 else:
                     batch_xs = np.array(batch).astype(np.float32)
+
                 batch_zs = np.random.uniform(
                     -1.0, 1.0, [self.batch_size, self.z_dim]).astype(np.float32)
 
