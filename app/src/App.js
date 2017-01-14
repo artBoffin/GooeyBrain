@@ -119,7 +119,7 @@ class ParameterPathRow extends React.Component{
     }
 
     handleChange(e) {
-        this.props.onChange(e.target.checked, this.props.idx);
+        this.props.onChange(e.target.value, this.props.idx);
     }
 
     componentDidMount () {
@@ -154,7 +154,7 @@ class ParameterTextRow extends React.Component{
     }
 
     handleChange(e) {
-        this.props.onChange(e.target.checked, this.props.idx);
+        this.props.onChange(e.target.value, this.props.idx);
     }
     render() {
         const name = this.props.parameter.name;
