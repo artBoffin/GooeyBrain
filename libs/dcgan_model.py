@@ -177,7 +177,8 @@ class DCGAN(object):
                     files.append(os.path.join(root, filename))
         data = files
         print ("found %d files"%len(data))
-        # np.random.shuffle(data)
+        np.random.shuffle(data)
+        batch_idxs = min(len(data), self.train_size) // self.batch_size
 
         d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
             .minimize(self.d_loss, var_list=self.d_vars)
@@ -221,18 +222,7 @@ class DCGAN(object):
             print(" [!] Load failed...")
 
         for epoch in xrange(self.n_epochs):
-            if self.dataset == 'mnist':
-                batch_idxs = min(len(data_X), self.train_size) // self.batch_size
-            else:
-                files = []
-                img_types = ['.jpg', '.jpeg', '.png']
-                for root, dirnames, filenames in os.walk(self.files_path):
-                    for filename in filenames:
-                        if any([filename.endswith(type_str) for type_str in img_types]):
-                            files.append(os.path.join(root, filename))
-                data = files
-                batch_idxs = min(len(data), self.train_size) // self.batch_size
-
+            np.random.shuffle(data)
             for idx in xrange(0, batch_idxs):
                 batch_files = data[idx * self.batch_size:(idx + 1) * self.batch_size]
                 batch = [
