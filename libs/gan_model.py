@@ -119,9 +119,14 @@ class GAN(object):
         self._build_model()
 
     def _build_model(self):
-        self.images = tf.placeholder(tf.float32,
+        self.inputs = tf.placeholder(tf.float32,
                                      [self.batch_size] + self.output_shape,
                                      name='real_images')
+        self.sample_inputs = tf.placeholder(
+            tf.float32, [self.sample_size] + self.output_shape, name='sample_inputs')
+
+        inputs = self.inputs
+        sample_inputs = self.sample_inputs
 
         self.z = tf.placeholder(tf.float32, [None, self.z_dim],
                                 name='z')
@@ -134,9 +139,9 @@ class GAN(object):
             n_features=self.n_features, activation=tf.nn.relu, output_activation=tf.nn.tanh)
 
         # Discriminator for real input samples
-        self.D_real, self.D_real_logits = discriminator(self.images, phase_train=True,
+        self.D_real, self.D_real_logits = discriminator(self.inputs, phase_train=True,
                                                         n_features=self.n_features,
-                                                        convolutional=self.convolutional,reuse=False)
+                                                        convolutional=self.convolutional, reuse=False)
 
         # Discriminator for generated samples
         self.D_fake, self.D_fake_logits = discriminator(self.G, phase_train=True,
@@ -205,17 +210,20 @@ class GAN(object):
         zs= np.random.uniform(-1, 1, size=(self.sample_size, self.z_dim))
 
         sample_files = data[0:self.sample_size]
-        sample = [get_image(sample_file,
-                            self.image_size,
-                            is_crop=self.is_crop,
-                            resize_w=self.output_size,
-                            is_grayscale=self.is_grayscale) for sample_file in sample_files]
+        sample = [
+          get_image(sample_file,
+                    input_height=self.input_height,
+                    input_width=self.input_width,
+                    resize_height=self.output_height,
+                    resize_width=self.output_width,
+                    is_crop=self.is_crop,
+                    is_grayscale=self.is_grayscale) for sample_file in sample_files]
         if (self.is_grayscale):
-            sample_images = np.array(sample).astype(np.float32)[:, :, :, None]
+            sample_inputs = np.array(sample).astype(np.float32)[:, :, :, None]
         else:
-            sample_images = np.array(sample).astype(np.float32)
+            sample_inputs = np.array(sample).astype(np.float32)
 
-        save_images(sample_images, [8, 8],
+        save_images(sample_inputs, [8, 8],
                     '{}/test_samples.png'.format(self.model_dir))
 
         counter = 1
@@ -236,11 +244,14 @@ class GAN(object):
             #np.random.shuffle(data)
             for idx in xrange(0, batch_idxs):
                 batch_files = data[idx*self.batch_size:(idx+1)*self.batch_size]
-                batch = [get_image(batch_file,
-                                   self.image_size,
-                                   is_crop=self.is_crop,
-                                   resize_w=self.output_size,
-                                   is_grayscale=self.is_grayscale) for batch_file in batch_files]
+                batch = [
+                    get_image(batch_file,
+                              input_height=self.input_height,
+                              input_width=self.input_width,
+                              resize_height=self.output_height,
+                              resize_width=self.output_width,
+                              is_crop=self.is_crop,
+                              is_grayscale=self.is_grayscale) for batch_file in batch_files]
                 if (self.is_grayscale):
                     batch_xs = np.array(batch).astype(np.float32)[:, :, :, None]
                 else:
@@ -253,37 +264,44 @@ class GAN(object):
                 # this_lr_d = min(1e-2, max(1e-6, init_lr_d * (loss_d / loss_g) ** 2))
 
                 # Update D network
-                loss_d, _, sum_d = self.sess.run([self.loss_D, opt_d, self.D_sum_op],
-                                                 feed_dict={self.images: batch_xs,
+                _, sum_d = self.sess.run([opt_d, self.D_sum_op],
+                                                 feed_dict={self.inputs: batch_xs,
                                                             self.z: batch_zs})
                 # total_loss_d += loss_d
                 # n_loss_d += 1
                 self.writer.add_summary(sum_d, step_i)
 
                 # Update G network
-                loss_g, _, sum_g = self.sess.run([self.loss_G, opt_g, self.G_sum_op],
+                _, sum_g = self.sess.run([opt_g, self.G_sum_op],
                                                  feed_dict={self.z: batch_zs})
                 # total_loss_g += loss_g
                 # n_loss_g += 1
                 self.writer.add_summary(sum_g, step_i)
 
                 # update G again - Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
-                loss_g, _, sum_g = self.sess.run([self.loss_G, opt_g, self.G_sum_op],
+                _, sum_g = self.sess.run([opt_g, self.G_sum_op],
                                                  feed_dict={self.z: batch_zs})
                 # total_loss_g += loss_g
                 # n_loss_g += 1
                 self.writer.add_summary(sum_g, step_i)
 
+                errD_fake = self.loss_D_fake.eval({self.z: batch_zs})
+                errD_real = self.loss_D_real.eval({self.inputs: batch_xs})
+                errG = self.loss_G.eval({self.z: batch_zs})
+
                 step_i += 1
                 counter += 1
-                print('Epoch: [%2d] [%3d/%3d] time: %4.4f d loss: %08.06f,  ' %
-                      (epoch, idx, batch_idxs, time.time() - start_time, loss_d) +
-                      'g* = loss: %08.06f' % loss_g)
+                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
+                      % (epoch, idx, batch_idxs,
+                         time.time() - start_time, errD_fake + errD_real, errG))
+                # print('Epoch: [%2d] [%3d/%3d] time: %4.4f d loss: %08.06f,  ' %
+                #       (epoch, idx, batch_idxs, time.time() - start_time, loss_d) +
+                #       'g* = loss: %08.06f' % loss_g)
 
                 if np.mod(counter, self.sample_step) == 0:
                     samples, d_loss, g_loss = self.sess.run(
                         [self.sampler, self.loss_D, self.loss_G],
-                        feed_dict={self.z: zs, self.images: sample_images}
+                        feed_dict={self.z: zs, self.inputs: sample_inputs}
                     )
                     save_images(samples, [8, 8],
                                 '{}/train_{:02d}_{:04d}.png'.format(self.model_dir, epoch, idx))
@@ -370,10 +388,13 @@ def encoder(x, phase_train, dimensions=[], filter_sizes=[],
                     x=current_input,
                     n_output=n_output,
                     reuse=reuse)
-            norm = bn(
-                x=h,
-                phase_train=phase_train,
-                name='bn')
+            if layer_i > 0:
+                norm = bn(
+                    x=h,
+                    phase_train=phase_train,
+                    name='e_bn%d'%layer_i)
+            else:
+                norm = h
             output = activation(norm)
 
         current_input = output
@@ -441,7 +462,7 @@ def decoder(z,
                 z1, [-1, dimensions[0][0], dimensions[0][1], channels[0]])
             current_input = activation(
                 features=bn(
-                    name='bn',
+                    name='g_bn0',
                     x=rsz,
                     phase_train=phase_train,
                     reuse=reuse))
@@ -488,7 +509,7 @@ def decoder(z,
 
 
 def generator(z, phase_train=True, output_shape=[64,64,3], convolutional=True,
-              n_features=32, reuse=None, activation=tf.nn.relu6, output_activation=tf.nn.tanh,
+              n_features=32, reuse=None, activation=tf.nn.relu, output_activation=tf.nn.tanh,
               scope_name='generator'):
     """Simple interface to build a decoder network given the input parameters.
 
