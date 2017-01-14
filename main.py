@@ -1,4 +1,4 @@
-from flask import (Flask,jsonify, render_template, request)
+from flask import (Flask,jsonify, render_template, request, send_file)
 import json
 
 import os
@@ -80,20 +80,20 @@ def get_parameters():
         params['GAN'].append(p.getJson())
     return jsonify(params)
 
-@app.route('/api/save_parameters', methods=['POST'])
+@app.route('/api/save_parameters', methods=['GET', 'POST'])
 def save():
     parameters = request.json
     timestr = time.strftime("%Y%m%d-%H%M%S")
     filename = "parameters-%s.json"%timestr
 
-    directory = "saved_parameters"
+    directory = "./tmp/saved_parameters"
     if not os.path.exists(directory):
         os.makedirs(directory)
 
     filepath = os.path.join(directory, filename)
     with open (filepath, 'w') as f:
         json.dumps(parameters, f)
-    return jsonify("saved parameters to %s"%filepath)
+    return send_file(filepath)
 
 
 @app.route('/')
