@@ -107,6 +107,7 @@ class ParameterToggleRow extends React.Component{
                 <td>
                     <Switch id={name} checked={value} onChange={this.handleChange}>{value}</Switch>
                 </td>
+                <td></td>
             </tr>
         );
     }
@@ -141,6 +142,7 @@ class ParameterPathRow extends React.Component{
                         <input type="file" id="uploadBtn" ref={i => this._inp = i}/>
                     </div>
                 </td>
+                <td></td>
             </tr>
         );
     }
@@ -163,8 +165,9 @@ class ParameterTextRow extends React.Component{
             <tr>
                 <td>{name}</td>
                 <td>
-                    <Textfield label="" id={name} value={value} onChange={this.handleChange}/>
+                    <Textfield label="" id={name} value={value} style={{width: '100%'}} onChange={this.handleChange}/>
                 </td>
+                <td></td>
             </tr>
         );
     }

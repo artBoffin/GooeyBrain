@@ -13,7 +13,7 @@ from libs.parameter import Parameter
 
 class DCGAN(object):
     parameters = [
-        Parameter("files_path", "./data", str, description="path to files", is_path=True),
+        Parameter("files_path", "", str, description="path to files", is_path=True),
         Parameter("is_grayscale", False, bool, description="is image grayscale? (default rgb)"),
         Parameter("input_h", 64, int, 1, 1000, 1, "height of input image"),
         Parameter("input_w", 64, int, 1, 1000, 1, "width of input image"),
