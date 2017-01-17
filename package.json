@@ -4,7 +4,7 @@
   "description": "Gui for generative models of deep learning, using Tensorflow",
   "main": "main.js",
   "scripts": {
-    "start": "echo yo"
+    "start": "./node_modules/.bin/electron ."
   },
   "repository": {
     "type": "git",
