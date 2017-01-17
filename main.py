@@ -52,9 +52,11 @@ def dcegan():
     # call the tensorflow train with the file as flag
     cmd = ' '.join(['python', 'run_tf.py', '--parameters_file', parameters_filepath])
     training_process = subprocess.Popen(cmd, shell=True) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    tensor_board = subprocess.Popen('tensorboard --logdir=%s'%tensorboard_dir,shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    tensor_board = subprocess.Popen(
+        'tensorboard --logdir=%s --host=%s --port=%s'%(tensorboard_dir, '127.0.0.1', '6006'),
+        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     # print "started train and tensor board"
-    return jsonify({'results':"trainig now!"})
+    return jsonify({'results': "training now!"})
 
 
 @app.route('/api/is_training')
@@ -69,7 +71,7 @@ def is_training():
         training = True
     if tensor_board is not None:
         tensorboard = True
-    return jsonify({"training":training,"tensorboard":tensorboard, "out":out})
+    return jsonify({"training": training, "tensorboard": tensorboard, "out": out})
 
 
 @app.route('/api/get_def_parameters')
@@ -85,7 +87,6 @@ def save():
     parameters = request.json
     timestr = time.strftime("%Y%m%d-%H%M%S")
     filename = "parameters-%s.json"%timestr
-
     directory = "./tmp/saved_parameters"
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -93,11 +94,18 @@ def save():
     filepath = os.path.join(directory, filename)
     with open (filepath, 'w') as f:
         json.dumps(parameters, f)
-    return send_file(filepath)
+    return send_file(filepath, as_attachment=True)
 
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+if __name__ == "__main__":
+    print('oh hello')
+    #sleep(10)
+    # sys.stdout.flush()
+    app.run(host='127.0.0.1', port=5000)
+
 
 # models - GAN (for DCGAN set convolutional=true, VAE, VAEGAN, DRAW?)

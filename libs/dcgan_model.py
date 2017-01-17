@@ -216,7 +216,7 @@ class DCGAN(object):
         counter = 1
         start_time = time.time()
 
-        if self.load(self.checkpoint_dir):
+        if self.load():
             print(" [*] Load SUCCESS")
         else:
             print(" [!] Load failed...")
@@ -281,7 +281,8 @@ class DCGAN(object):
                         print("one pic error!...")
 
                 if np.mod(counter, self.save_step) == 2:
-                    self.save(self.checkpoint_dir, counter)
+                    self.save (counter)
+            self.save(counter)
 
     def discriminator(self, image, y=None, reuse=False):
         with tf.variable_scope("discriminator") as scope:
@@ -358,12 +359,12 @@ class DCGAN(object):
 
             return tf.nn.tanh(h4)
 
-    def save(self, checkpoint_dir, step):
+    def save(self, step):
         self.saver.save(self.sess,
                         os.path.join(self.checkpoint_dir, "%s.model"%self.run_name),
                         global_step=step)
 
-    def load(self, checkpoint_dir):
+    def load(self):
         print(" [*] Reading checkpoints...")
 
         ckpt = tf.train.get_checkpoint_state(self.checkpoint_dir)
@@ -375,3 +376,16 @@ class DCGAN(object):
         else:
             print(" [*] Failed to find a checkpoint")
             return False
+
+    def generate(self, num_smaples, save_single=False):
+        for i in range(max(int(num_smaples/self.batch_size), 1)):
+            batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]) \
+                .astype(np.float32)
+            if save_single:
+                samples = self.sess.run(self.G, feed_dict={self.z: batch_z})
+                save_images_single(samples,
+                                   os.path.join(self.sample_dir,
+                                                'test_%s_%d.png' % (strftime("%Y-%m-%d %H:%M:%S", gmtime()), i)))
+            else:
+                save_images(samples, [8, 8],
+                        os.path.join(self.sample_dir,'test_%s_%d.png' % (strftime("%Y-%m-%d %H:%M:%S", gmtime()), i)))
