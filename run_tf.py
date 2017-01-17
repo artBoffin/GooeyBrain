@@ -1,17 +1,19 @@
-import os
-import json
-import tensorflow as tf
-from pprint import pformat
-from libs.dcgan_model import DCGAN
-import logging
 import argparse
+import json
+from pprint import pformat
 
-logging.basicConfig(level=logging.DEBUG)
+import tensorflow as tf
+
+from models.dcgan_model.main import DCGAN
+from models.util import log
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--parameters_file",type=str, help="path to json file holding parameters")
+parser.add_argument("--train",type=bool,
+                    help="True if we want to train a model, flase to load a model and generate images")
+
 
 def main(_):
-    logging.info("running tensor flow start")
     args = parser.parse_args()
     with open(args.parameters_file) as data_file:
         data = json.load(data_file)
@@ -19,10 +21,10 @@ def main(_):
     for p in data:
         params[p['name']] = p['value']
 
-    logging.info(pformat(params))
+    log ("params sent: %s"%pformat(params))
     with tf.Session() as sess:
-        dcgan = DCGAN(sess,params)
-        dcgan.train()
+        dcgan = DCGAN(params)
+        dcgan.train(sess)
 
 if __name__ == '__main__':
     tf.app.run()

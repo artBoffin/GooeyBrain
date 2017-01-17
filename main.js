@@ -20,18 +20,6 @@ app.on('window-all-closed', function() {
 app.on('ready', function() {
   // call python?
   var subpy = require('child_process').spawn('python', [__dirname + '/main.py']);
-  subpy.stdout.on('data', function(data) {
-        console.log('stdout: ' + data);
-        //Here is where the output goes
-  });
-  subpy.stderr.on('data', function(data) {
-        console.log('stderr: ' + data);
-        //Here is where the error output goes
-  });
-  subpy.on('close', function(code) {
-        console.log('closing code: ' + code);
-        //Here you can get the exit code of the script
-  });
 
   var rq = require('request-promise');
   var mainAddr = 'http://localhost:8000';
@@ -58,11 +46,28 @@ app.on('ready', function() {
       });
   };
 
+  var sendStdOut = function() {
+      subpy.stdout.on('data', function(data) {
+          console.log('stdout: ' + data);
+          //Here is where the output goes
+      });
+      subpy.stderr.on('data', function(data) {
+          console.log('stderr: ' + data);
+          mainWindow.webContents.send('info-log' , {msg:String(data)});
+          //Here is where the error output goes
+      });
+      subpy.on('close', function(code) {
+          console.log('closing code: ' + code);
+          //Here you can get the exit code of the script
+      });
+  }
+
   var startUp = function(){
     rq(mainAddr)
       .then(function(htmlString){
         console.log('server started!');
         openWindow();
+        sendStdOut();
       })
       .catch(function(err){
         // console.log('waiting for the server start...');

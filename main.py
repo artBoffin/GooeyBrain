@@ -1,15 +1,13 @@
-from flask import (Flask,jsonify, render_template, request, send_file)
 import json
-
 import os
+import signal
 import subprocess
 import time
-import libs.gan_model
-import libs.dcgan_model
-import signal
-import logging
 
-logging.basicConfig(level=logging.DEBUG)
+from flask import (Flask,jsonify, render_template, request, send_file)
+
+import models_manager
+from models.util import log
 
 # webapp
 app = Flask(__name__,static_folder='app/static', template_folder='app/templates')
@@ -22,6 +20,8 @@ global training_process
 global tensor_board
 training_process = None
 tensor_board = None
+
+models_manager.init_models()
 
 def save_parameters_file(parameters):
     # save parameters to a temp txt files
@@ -46,8 +46,8 @@ def save_parameters_file(parameters):
     return parameters_filepath, tensorboard_dir
 
 @app.route('/api/train', methods=['POST'])
-def dcegan():
-    logging.info ("train called")
+def dcgan():
+    log ("train called")
     global training_process
     global tensor_board
     arr = request.json
@@ -55,13 +55,13 @@ def dcegan():
     parameters_filepath, tensorboard_dir = save_parameters_file(arr)
 
     # call the tensorflow train with the file as flag
-    cmd = ' '.join(['python', 'run_tf.py', '--parameters_file', parameters_filepath])
+    cmd = ' '.join(['python', 'run_tf.py', '--parameters_file', parameters_filepath, '--train', 'True'])
     training_process = subprocess.Popen(
         cmd, shell=True) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     tensor_board = subprocess.Popen(
         'tensorboard --logdir=%s --host=%s --port=%s'%(tensorboard_dir, '127.0.0.1', '6006'),
         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    logging.info ("started tf train and tensor board")
+    log ("started tf train and tensor board")
     return jsonify({'results': "training now!"})
 
 
@@ -82,10 +82,7 @@ def is_training():
 
 @app.route('/api/get_def_parameters')
 def get_parameters():
-    params = dict()
-    params['GAN'] = []
-    for p in libs.dcgan_model.DCGAN.parameters:
-        params['GAN'].append(p.getJson())
+    params = models_manager.parameters_dict
     return jsonify(params)
 
 @app.route('/api/save_parameters', methods=['GET', 'POST'])
@@ -110,7 +107,7 @@ def index():
 if __name__ == "__main__":
   os.setpgrp() # create new process group, become its leader
   try:
-      logging.info("starting Flask App")
+      log("starting Flask App")
       app.run(host='127.0.0.1', port=8000)
   finally:
       os.killpg(0, signal.SIGKILL) # kill all processes in my group

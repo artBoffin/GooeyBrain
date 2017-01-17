@@ -29,7 +29,7 @@ class TrainingForm extends React.Component{
     componentDidMount() {
         $.getJSON('/api/get_def_parameters')
             .then((params)=>{
-                this.setState({data:params.GAN});
+                this.setState({data:params.dcgan_model});
             });
     };
 
@@ -41,17 +41,16 @@ class TrainingForm extends React.Component{
 
     handleTrain(event) {
         train(this.state.data);
+        this.props.setTrain();
     }
 
     handleSave(event) {
-    console.log("hi!")
         $.ajax({
             url: '/api/save_parameters',
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(this.state.data),
             success: (response) => {
-                console.log("hi!")
                 console.log(response)
             }
         });
@@ -106,72 +105,79 @@ class TrainButton extends React.Component {
     }
 }
 
-var IframeComponent=React.createClass({
-    render:function()
-    {
-        const training = this.props.isTraining;
-        var Iframe=this.props.iframe;
-        let view = null;
-        if (!training) {
-            view = <div> Tensorboard will show up here</div>;
-        } else {
+class TrainLog extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            logMessages: [],
+        };
+    }
 
+    openLink() {
+        const shell = window.require('electron').shell;
+        shell.openExternal('http://localhost:6006/')
+    }
+
+    componentDidMount() {
+        let component = this
+        const ipc = window.require('electron').ipcRenderer;
+        ipc.on('info-log', function (event, data) {
+            var logMessages = component.state.logMessages.slice()
+            logMessages.push(data.msg)
+            component.setState({logMessages:logMessages})
+        });
+    }
+
+    render() {
+        const training = this.props.isTraining;
+        let view = null;
+        const n_messages = 20
+        if (!training) {
+            view = <div> Training logs will show up here</div>;
+        } else {
+            let logRows = [];
+            this.state.logMessages.forEach(function(msg, index) {
+                logRows.push(<div key={index}>{msg}</div>);
+            });
             view =
                 <div>
-                    <div> realod the page to update Tensorboard</div>
-                    <div> you can also navigate to <a href="http://localhost:6006/" target='_blank'>http://localhost:6006/</a> to see this on full screen</div>
-                    <Iframe src={this.props.src} height={this.props.height} width={this.props.width}/>
-                </div>;
+                <div> Navigate to <a onClick={this.openLink}>http://localhost:6006/</a> to see Tensorboard logs</div>
+                <div>
+                    <h4> logging messages:</h4>
+                    {logRows}
+                </div>
+                </div>
         }
-
-        return(
+        return (
             <div>
-                { view }
+                {view}
             </div>
-        );
+        )
     }
-});
+}
 
 class TrainWindow extends React.Component {
     constructor(props) {
         super(props);
-        let training = false;
-        let tensorborad = false;
         this.state = {
-            isTraining: training,
-            tensorborad: tensorborad
+            isTraining: false,
         };
         this.setTrainingStatus = this.setTrainingStatus.bind(this);
     }
 
     setTrainingStatus() {
-        var a=this;
-        $.getJSON('/api/is_training', function( data ) {
-            let isTraining = data['training'];
-            let boardStatus = data['tensorboard'];
-            a.setState({isTraining: isTraining, tensorborad:boardStatus})
-        });
-    }
-
-    componentDidMount() {
-        this.timerID = setInterval(
-            () => this.setTrainingStatus(),
-            15000 // query 4 times in a second
-        );
-    }
-
-    componentWillUnmount() {
-        clearInterval(this.timerID);
+        console.log('set training called');
+        this.setState({isTraining:true});
     }
 
     render() {
         return(
             <Grid>
                 <Cell col={4} shadow={4}>
-                    <TrainingForm isTraining={this.state.isTraining}/>
+                    <TrainingForm isTraining={this.state.isTraining} setTrain={this.setTrainingStatus}/>
                 </Cell>
                 <Cell col={8}>
-                    <IframeComponent iframe='iframe' src="http://127.0.0.1:6006" height="100%" width="100%" isTraining={this.state.tensorborad}/>
+                    <TrainLog isTraining={this.state.isTraining}/>
                 </Cell>
             </Grid>
         )

@@ -1,17 +1,17 @@
 from __future__ import division
-import os
+
 import time
-from glob import glob
-import tensorflow as tf
-import numpy as np
+
 from six.moves import xrange
 
-from libs.dcgan_ops import *
-from libs.dcgan_utils import *
-from libs.parameter import Parameter
+from models.dcgan_model.dcgan_ops import *
+from models.dcgan_model.dcgan_utils import *
+from models.parameter import Parameter
+
+from models import BaseModel
 
 
-class DCGAN(object):
+class DCGAN(BaseModel):
     parameters = [
         Parameter("files_path", "", str, description="path to files", is_path=True),
         Parameter("is_grayscale", False, bool, description="is image grayscale? (default rgb)"),
@@ -33,15 +33,14 @@ class DCGAN(object):
         Parameter("dfc_dim", 1024, int, 1, 2048, 1, "Dimension of gen filters in first conv layer. [1024]"),
         Parameter("sample_step", 5, int, 1, 1000, 1, "save sample images every X steps"),
         Parameter("save_step", 50, int, 1, 1000, 1, "save model file every X steps"),
-        #Parameter("train_size", float("inf"), float, 1, float("inf"), 1, "limit the files to use for training?")
         Parameter("save_path", "./tmp", str, description="path to sve model files", is_path=True),
         Parameter("run_name", "gan_%s" % time.strftime("%Y%m%d-%H%M%S"), str,
                   description="name of this run for creating relevant folders")
+        # Parameter("train_size", float("inf"), float, 1, float("inf"), 1, "limit the files to use for training?") // inf not accepted by js
     ]
 
-    def __init__(self, sess, params):
-        self.sess = sess
-
+    def __init__(self, params):
+        self.log("dcgan model init")
         self.y_dim = None
 
         self.gf_dim = params['gf_dim']
@@ -84,7 +83,7 @@ class DCGAN(object):
         self.sample_dir = os.path.join(self.save_path, self.run_name, 'model')
         self.checkpoint_dir = os.path.join(self.save_path, self.run_name, 'ckpt')
         paths = [self.tensorboard_dir, self.sample_dir, self.checkpoint_dir]
-        print paths
+        self.log( "crated folders: %s"%", ".join(paths))
 
         for path in paths:
             if not os.path.exists(path):
@@ -167,7 +166,7 @@ class DCGAN(object):
 
         self.saver = tf.train.Saver()
 
-    def train(self):
+    def train(self, sess):
         """Train DCGAN"""
         files = []
         img_types = ['.jpg', '.jpeg', '.png']
@@ -176,7 +175,7 @@ class DCGAN(object):
                 if any([filename.endswith(type_str) for type_str in img_types]):
                     files.append(os.path.join(root, filename))
         data = files
-        print ("found %d files"%len(data))
+        self.log("found %d files"%len(data))
         np.random.shuffle(data)
         batch_idxs = min(len(data), self.train_size) // self.batch_size
 
@@ -193,7 +192,7 @@ class DCGAN(object):
                                     self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
         self.d_sum = merge_summary(
             [self.z_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
-        self.writer = SummaryWriter(self.tensorboard_dir, self.sess.graph)
+        self.writer = SummaryWriter(self.tensorboard_dir, sess.graph)
 
         sample_z = np.random.uniform(-1, 1, size=(self.sample_num, self.z_dim))
 
@@ -216,10 +215,10 @@ class DCGAN(object):
         counter = 1
         start_time = time.time()
 
-        if self.load():
-            print(" [*] Load SUCCESS")
+        if self.load(sess):
+            self.log(" [*] Load SUCCESS")
         else:
-            print(" [!] Load failed...")
+            self.log(" [!] Load failed...")
 
         for epoch in xrange(self.n_epochs):
             np.random.shuffle(data)
@@ -242,17 +241,17 @@ class DCGAN(object):
                     .astype(np.float32)
 
                 # Update D network
-                _, summary_str = self.sess.run([d_optim, self.d_sum],
+                _, summary_str = sess.run([d_optim, self.d_sum],
                                                feed_dict={self.inputs: batch_images, self.z: batch_z})
                 self.writer.add_summary(summary_str, counter)
 
                 # Update G network
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
+                _, summary_str = sess.run([g_optim, self.g_sum],
                                                feed_dict={self.z: batch_z})
                 self.writer.add_summary(summary_str, counter)
 
                 # Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
+                _, summary_str = sess.run([g_optim, self.g_sum],
                                                feed_dict={self.z: batch_z})
                 self.writer.add_summary(summary_str, counter)
 
@@ -261,13 +260,13 @@ class DCGAN(object):
                 errG = self.g_loss.eval({self.z: batch_z})
 
                 counter += 1
-                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
+                self.log("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
                       % (epoch, idx, batch_idxs,
                          time.time() - start_time, errD_fake + errD_real, errG))
 
                 if np.mod(counter, self.sample_step) == 1:
                     try:
-                        samples, d_loss, g_loss = self.sess.run(
+                        samples, d_loss, g_loss = sess.run(
                             [self.sampler, self.d_loss, self.g_loss],
                             feed_dict={
                                 self.z: sample_z,
@@ -276,13 +275,13 @@ class DCGAN(object):
                         )
                         save_images(samples, [8, 8],
                                     './{}/train_{:02d}_{:04d}.png'.format(self.sample_dir, epoch, idx))
-                        print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
+                        self.log("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
                     except:
-                        print("one pic error!...")
+                        self.error("one pic error!...")
 
                 if np.mod(counter, self.save_step) == 2:
-                    self.save (counter)
-            self.save(counter)
+                    self.save (sess, counter)
+            self.save(sess, counter)
 
     def discriminator(self, image, y=None, reuse=False):
         with tf.variable_scope("discriminator") as scope:
@@ -359,30 +358,12 @@ class DCGAN(object):
 
             return tf.nn.tanh(h4)
 
-    def save(self, step):
-        self.saver.save(self.sess,
-                        os.path.join(self.checkpoint_dir, "%s.model"%self.run_name),
-                        global_step=step)
-
-    def load(self):
-        print(" [*] Reading checkpoints...")
-
-        ckpt = tf.train.get_checkpoint_state(self.checkpoint_dir)
-        if ckpt and ckpt.model_checkpoint_path:
-            ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-            self.saver.restore(self.sess, os.path.join(self.checkpoint_dir, ckpt_name))
-            print(" [*] Success to read {}".format(ckpt_name))
-            return True
-        else:
-            print(" [*] Failed to find a checkpoint")
-            return False
-
-    def generate(self, num_smaples, save_single=False):
-        for i in range(max(int(num_smaples/self.batch_size), 1)):
+    def generate(self, sess, num_samples, save_single=False):
+        for i in range(max(int(num_samples/self.batch_size), 1)):
             batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]) \
                 .astype(np.float32)
+            samples = sess.run(self.G, feed_dict={self.z: batch_z})
             if save_single:
-                samples = self.sess.run(self.G, feed_dict={self.z: batch_z})
                 save_images_single(samples,
                                    os.path.join(self.sample_dir,
                                                 'test_%s_%d.png' % (strftime("%Y-%m-%d %H:%M:%S", gmtime()), i)))
