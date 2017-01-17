@@ -8,9 +8,12 @@ import {
     Header,
     Content,
     Textfield,
-    Switch
+    Switch,
+    FABButton,
+    IconButton
 } from "react-mdl";
 import $ from 'jquery';
+
 
 class ParameterSliderRow extends React.Component {
     constructor(props) {
@@ -27,7 +30,7 @@ class ParameterSliderRow extends React.Component {
         const name = this.props.parameter.name;
         return (
             <tr>
-                <td>{name}</td>
+                <td>{printName(name)}</td>
                 <td>
                     <ParameterSlider
                         parameter={this.props.parameter}
@@ -103,7 +106,7 @@ class ParameterToggleRow extends React.Component{
         const value = this.props.parameter.value;
         return (
             <tr>
-                <td>{name}</td>
+                <td>{printName(name)}</td>
                 <td>
                     <Switch id={name} checked={value} onChange={this.handleChange}>{value}</Switch>
                 </td>
@@ -117,35 +120,44 @@ class ParameterPathRow extends React.Component{
     constructor(props) {
         super(props);
         this.handleChange = this.handleChange.bind(this);
+        this.selectPath = this.selectPath.bind(this);
     }
 
     handleChange(e) {
         this.props.onChange(e.target.value, this.props.idx);
     }
 
-    componentDidMount () {
-        this._inp.directory = true;
-        this._inp.webkitdirectory = true;
-    }
+    selectPath(){
+        const ipc = window.require('electron').ipcRenderer;
+        ipc.send('open-file-dialog');
+        const call=this.handleChange;
+        ipc.on('selected-directory', function (event, path) {
+            console.log(path)
+            let fakeEvent = {'target':{'value':path[0]}};
+            call(fakeEvent);
+        })
+      }
+
 
     render() {
         const name = this.props.parameter.name;
         const value = this.props.parameter.value;
-        const printName = name.replace(/_/g, ' ');
         return (
             <tr>
-                <td>Path : {printName}</td>
+                <td>{printName(name)}</td>
                 <td>
-                    <Textfield label="" id={name} value={value} onChange={this.handleChange}/>
-                    <div className="mdl-button mdl-button--primary mdl-button--icon mdl-button--file">
-                        <i className="material-icons">attach_file</i>
-                        <input type="file" id="uploadBtn" ref={i => this._inp = i}/>
-                    </div>
+                    <Textfield label="" id={name} value={value} style={{width: '100%'}} onChange={this.handleChange}/>
                 </td>
-                <td></td>
+                <td>
+                    <IconButton name="attach_file" colored onClick={this.selectPath}/>
+                </td>
             </tr>
         );
     }
+}
+
+function printName(name) {
+    return name.replace(/_/g, ' ');
 }
 
 
@@ -163,7 +175,7 @@ class ParameterTextRow extends React.Component{
         const value = this.props.parameter.value;
         return (
             <tr>
-                <td>{name}</td>
+                <td>{printName(name)}</td>
                 <td>
                     <Textfield label="" id={name} value={value} style={{width: '100%'}} onChange={this.handleChange}/>
                 </td>
@@ -194,9 +206,9 @@ class ParametersList extends React.Component {
             else if (parameter.type==='bool') {
                 curr_row=<ParameterToggleRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>;
             }
-            // else if (parameter.type==='str' && parameter.is_path) {
-            //     curr_row=<ParameterPathRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>;
-            // }
+             else if (parameter.type==='str' && parameter.is_path) {
+                 curr_row=<ParameterPathRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>;
+             }
             else if (parameter.type==='str') {
                 curr_row=<ParameterTextRow parameter={parameter} key={parameter.name} idx={index} onChange={changeFunction}/>;
             }

@@ -6,6 +6,8 @@ import subprocess
 import time
 import libs.gan_model
 import libs.dcgan_model
+import sys
+from time import sleep
 
 # webapp
 app = Flask(__name__,static_folder='app/static', template_folder='app/templates')
@@ -102,9 +104,9 @@ def index():
     return render_template('index.html')
 
 if __name__ == "__main__":
-    print('oh hello')
-    #sleep(10)
     # sys.stdout.flush()
+    print('oh hello')
+    sleep(10)
     app.run(host='127.0.0.1', port=5000)
 
 

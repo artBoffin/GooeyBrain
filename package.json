@@ -2,7 +2,7 @@
   "name": "gooey-brain",
   "version": "1.0.0",
   "description": "Gui for generative models of deep learning, using Tensorflow",
-  "main": "index.js",
+  "main": "app/src/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,9 +24,12 @@
     "webpack": "^1.12.12"
   },
   "dependencies": {
+    "electron-prebuilt": "^1.4.13",
     "jquery": "^3.1.1",
     "react": "^15.4.2",
     "react-dom": "^15.4.2",
-    "react-mdl": "^1.9.0"
+    "react-mdl": "^1.9.0",
+    "request-promise": "^4.1.1",
+    "webpack-dev-server": "^1.16.2"
   }
 }
