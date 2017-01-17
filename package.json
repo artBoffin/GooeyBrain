@@ -2,7 +2,7 @@
   "name": "gooey-brain",
   "version": "1.0.0",
   "description": "Gui for generative models of deep learning, using Tensorflow",
-  "main": "app/src/main.js",
+  "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

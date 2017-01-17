@@ -6,8 +6,10 @@ import subprocess
 import time
 import libs.gan_model
 import libs.dcgan_model
-import sys
-from time import sleep
+import signal
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 # webapp
 app = Flask(__name__,static_folder='app/static', template_folder='app/templates')
@@ -22,7 +24,7 @@ training_process = None
 tensor_board = None
 
 def save_parameters_file(parameters):
-    # save parameters to temp txt files
+    # save parameters to a temp txt files
     save_path = "./tmp"
     run_name = ""
     tensorboard_dir = "./tmp/logs"
@@ -45,6 +47,7 @@ def save_parameters_file(parameters):
 
 @app.route('/api/train', methods=['POST'])
 def dcegan():
+    logging.info ("train called")
     global training_process
     global tensor_board
     arr = request.json
@@ -53,11 +56,12 @@ def dcegan():
 
     # call the tensorflow train with the file as flag
     cmd = ' '.join(['python', 'run_tf.py', '--parameters_file', parameters_filepath])
-    training_process = subprocess.Popen(cmd, shell=True) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    training_process = subprocess.Popen(
+        cmd, shell=True) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     tensor_board = subprocess.Popen(
         'tensorboard --logdir=%s --host=%s --port=%s'%(tensorboard_dir, '127.0.0.1', '6006'),
         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # print "started train and tensor board"
+    logging.info ("started tf train and tensor board")
     return jsonify({'results': "training now!"})
 
 
@@ -104,10 +108,10 @@ def index():
     return render_template('index.html')
 
 if __name__ == "__main__":
-    # sys.stdout.flush()
-    print('oh hello')
-    sleep(10)
-    app.run(host='127.0.0.1', port=5000)
+  os.setpgrp() # create new process group, become its leader
+  try:
+      logging.info("starting Flask App")
+      app.run(host='127.0.0.1', port=8000)
+  finally:
+      os.killpg(0, signal.SIGKILL) # kill all processes in my group
 
-
-# models - GAN (for DCGAN set convolutional=true, VAE, VAEGAN, DRAW?)
