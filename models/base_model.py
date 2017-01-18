@@ -1,5 +1,3 @@
-__author__ = 'jasrub'
-
 from __future__ import print_function
 
 import os
