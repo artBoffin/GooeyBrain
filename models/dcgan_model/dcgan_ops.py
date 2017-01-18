@@ -1,3 +1,4 @@
+# This model is from https://github.com/carpedm20/DCGAN-tensorflow"
 import math
 import numpy as np
 import tensorflow as tf
@@ -6,12 +7,18 @@ from tensorflow.python.framework import ops
 
 from models.dcgan_model.dcgan_utils import *
 
-
-image_summary = tf.summary.image
-scalar_summary = tf.summary.scalar
-histogram_summary = tf.summary.histogram
-merge_summary = tf.summary.merge
-SummaryWriter = tf.summary.FileWriter
+# try:
+#   image_summary = tf.image_summary
+#   scalar_summary = tf.scalar_summary
+#   histogram_summary = tf.histogram_summary
+#   merge_summary = tf.merge_summary
+#   SummaryWriter = tf.train.SummaryWriter
+# except:
+#     image_summary = tf.summary.image
+#     scalar_summary = tf.summary.scalar
+#     histogram_summary = tf.summary.histogram
+#     merge_summary = tf.summary.merge
+#     SummaryWriter = tf.summary.FileWriter
 
 
 class batch_norm(object):

@@ -39047,7 +39047,7 @@
 	        key: "openLink",
 	        value: function openLink() {
 	            var shell = window.require('electron').shell;
-	            shell.openExternal('http://localhost:6006/');
+	            shell.openExternal('http://127.0.0.1:6006/');
 	        }
 	    }, {
 	        key: "componentDidMount",

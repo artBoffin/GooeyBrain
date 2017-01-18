@@ -1,4 +1,4 @@
-# This model is from
+# This model is from https://github.com/carpedm20/DCGAN-tensorflow"
 from models.dcgan_model.main import DCGAN
 
 
