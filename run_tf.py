@@ -1,3 +1,5 @@
+__author__ = 'jasrub'
+
 import argparse
 import json
 from pprint import pformat
@@ -24,7 +26,11 @@ def main(_):
     log ("params sent: %s"%pformat(params))
     with tf.Session() as sess:
         dcgan = DCGAN(params)
-        dcgan.train(sess)
+        if (args.train):
+            dcgan.train(sess)
+        else:
+            num_samples = 640
+            dcgan.generate(sess, num_samples)
 
 if __name__ == '__main__':
     tf.app.run()

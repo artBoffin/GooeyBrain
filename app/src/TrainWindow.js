@@ -1,14 +1,8 @@
 import React, { Component } from "react";
 import {
     Button,
-    Slider,
     Grid,
-    Cell,
-    Layout,
-    Header,
-    Content,
-    Textfield,
-    Switch
+    Cell
 } from "react-mdl";
 import $ from 'jquery';
 import ParametersList from './Parameters';

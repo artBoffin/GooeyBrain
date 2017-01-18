@@ -1,16 +1,11 @@
 import React, { Component } from "react";
 import {
-    Button,
     Slider,
-    Grid,
-    Cell,
-    Layout,
-    Header,
-    Content,
     Textfield,
     Switch,
-    FABButton,
-    IconButton
+    IconButton,
+    Menu,
+    MenuItem
 } from "react-mdl";
 import $ from 'jquery';
 
@@ -42,6 +37,7 @@ class ParameterSliderRow extends React.Component {
                         value={""+value}
                         onChange={this.handleChange} />
                 </td>
+                <td><ParameterDescription parameter={this.props.parameter}/></td>
             </tr>
         );
     }
@@ -111,6 +107,7 @@ class ParameterToggleRow extends React.Component{
                     <Switch id={name} checked={value} onChange={this.handleChange}>{value}</Switch>
                 </td>
                 <td></td>
+                <td><ParameterDescription parameter={this.props.parameter}/></td>
             </tr>
         );
     }
@@ -151,6 +148,7 @@ class ParameterPathRow extends React.Component{
                 <td>
                     <IconButton name="attach_file" colored onClick={this.selectPath}/>
                 </td>
+                <td><ParameterDescription parameter={this.props.parameter}/></td>
             </tr>
         );
     }
@@ -180,9 +178,29 @@ class ParameterTextRow extends React.Component{
                     <Textfield label="" id={name} value={value} style={{width: '100%'}} onChange={this.handleChange}/>
                 </td>
                 <td></td>
+                <td><ParameterDescription parameter={this.props.parameter}/></td>
             </tr>
         );
     }
+}
+
+class ParameterDescription extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+
+    render() {
+        return (
+            <div style={{position: 'relative'}}>
+                <IconButton name="help" id={"parameter_description_"+this.props.parameter.name} />
+                <Menu target={"parameter_description_"+this.props.parameter.name}>
+                    <MenuItem>{this.props.parameter.description}</MenuItem>
+                </Menu>
+            </div>
+        )
+    }
+
+
 }
 
 class ParametersList extends React.Component {

@@ -1,6 +1,9 @@
+__author__ = 'jasrub'
 import json
 
-
+"""
+Parameter class for defining parameters for a Deep Learning model
+"""
 class Parameter(object):
     def __init__(self, name, value, p_type=None,
                  p_min=0, p_max=0, step=0, description="",
