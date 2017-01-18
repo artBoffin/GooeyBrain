@@ -1,5 +1,12 @@
 __author__ = 'jasrub'
 
+"""
+This file is called from main.py whan "Train" is clicked.
+It recieves as arguments a path to parameters json file and a flag weather this is train or not
+
+TODO: add generate button, then call this with "--train False" flag on click
+"""
+
 import argparse
 import json
 from pprint import pformat
@@ -28,6 +35,7 @@ def main(_):
         dcgan = DCGAN(params)
         if (args.train):
             dcgan.train(sess)
+            dcgan.generate(sess, num_samples)
         else:
             num_samples = 640
             dcgan.generate(sess, num_samples)

@@ -12,18 +12,33 @@ class TrainingForm extends React.Component{
         super(props);
         let training = false;
         this.state = {
-            data: [],
+            all_data: [],
+            data:[],
+            selected_model: "",
+            models:[],
             isTraining: training
         };
 
         this.handleSingleParameterChange = this.handleSingleParameterChange.bind(this);
         this.handleTrain = this.handleTrain.bind(this);
         this.handleSave = this.handleSave.bind(this);
+        this.handleLoad = this.handleLoad.bind(this);
     }
     componentDidMount() {
         $.getJSON('/api/get_def_parameters')
             .then((params)=>{
-                this.setState({data:params.dcgan_model});
+                var selected = params.selected_model;
+                let models = Object.keys(params).slice()
+                models.pop("selected_model")
+                console.log(selected)
+                var data = params[selected].slice()
+                this.setState({
+                    all_data:params,
+                    data:data,
+                    selected_model:selected,
+                    models:models
+                });
+                console.log("Models: "+this.state.models);
             });
     };
 
@@ -39,15 +54,27 @@ class TrainingForm extends React.Component{
     }
 
     handleSave(event) {
-        $.ajax({
-            url: '/api/save_parameters',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(this.state.data),
-            success: (response) => {
-                console.log(response)
-            }
-        });
+        // Download the parameter as file
+        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.state.data));
+        var dlAnchorElem = document.getElementById('downloadAnchorElem');
+        dlAnchorElem.setAttribute("href",     dataStr     );
+        dlAnchorElem.setAttribute("download", "parameters.json");
+        dlAnchorElem.click();
+    }
+
+    handleLoad(event) {
+        const fs = require('fs');
+        const ipc = window.require('electron').ipcRenderer;
+        ipc.send('open-file-dialog');
+        const call=this.handleChange;
+        const component = this;
+        ipc.on('selected-file', function (event, path) {
+            let filepath = path[0]
+            fs.openSync(filepath, 'r+'); //throws error if file doesn't exist
+            var data=fs.readFileSync(filepath); //file exists, get the contents
+            let parsedParameters = JSON.parse(data); //turn to js object
+            component.setState({data:parsedParameters})
+        })
     }
 
     render() {
@@ -63,8 +90,14 @@ class TrainingForm extends React.Component{
                     <Cell col={6} >
                         <TrainButton handleTrain={this.handleTrain} disabled={this.props.isTraining}/>
                     </Cell>
+                </Grid>
+                <Grid>
                     <Cell col={6} >
-                        <Button raised accent ripple onClick={this.handleSave}>Save Parameters</Button>
+                        <Button raised ripple onClick={this.handleLoad}>Load Parameters</Button>
+                    </Cell>
+                    <Cell col={6} >
+                        <Button raised ripple onClick={this.handleSave}>Save Parameters</Button>
+                        <a id="downloadAnchorElem" style={{display:'none'}}></a>
                     </Cell>
                 </Grid>
             </div>
@@ -160,7 +193,6 @@ class TrainWindow extends React.Component {
     }
 
     setTrainingStatus() {
-        console.log('set training called');
         this.setState({isTraining:true});
     }
 

@@ -126,10 +126,9 @@ class ParameterPathRow extends React.Component{
 
     selectPath(){
         const ipc = window.require('electron').ipcRenderer;
-        ipc.send('open-file-dialog');
+        ipc.send('open-dir-dialog');
         const call=this.handleChange;
         ipc.on('selected-directory', function (event, path) {
-            console.log(path)
             let fakeEvent = {'target':{'value':path[0]}};
             call(fakeEvent);
         })

@@ -23,7 +23,8 @@ var config = {
         ]
     },
     plugins: [
-    ]
+    ],
+    target: 'node'
 };
 
 

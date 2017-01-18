@@ -84,23 +84,10 @@ def is_training():
 
 @app.route('/api/get_def_parameters')
 def get_parameters():
-    params = models_manager.parameters_dict
+    params = {}
+    params = models_manager.parameters_dict.copy()
+    params["selected_model"] = params.keys()[0]
     return jsonify(params)
-
-@app.route('/api/save_parameters', methods=['GET', 'POST'])
-def save():
-    parameters = request.json
-    timestr = time.strftime("%Y%m%d-%H%M%S")
-    filename = "parameters-%s.json"%timestr
-    directory = "./tmp/saved_parameters"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    filepath = os.path.join(directory, filename)
-    with open (filepath, 'w') as f:
-        json.dumps(parameters, f)
-    return send_file(filepath, as_attachment=True)
-
 
 @app.route('/')
 def index():
