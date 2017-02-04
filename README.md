@@ -1,6 +1,8 @@
 # GooeyBrain
 
-Gui app for generating images using [Tensorflow](https://www.tensorflow.org/)
+GUI app for generating data, such as images, using [Tensorflow](https://www.tensorflow.org/)
+
+Current Beta release focuses on image generation.
 
 ### Installation
 To run on your comuter:  
