@@ -35,7 +35,7 @@ def main(_):
         dcgan = DCGAN(params)
         if (args.train):
             dcgan.train(sess)
-            dcgan.generate(sess, num_samples)
+            #dcgan.generate(sess, num_samples)
         else:
             num_samples = 640
             dcgan.generate(sess, num_samples)
