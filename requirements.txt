@@ -10,7 +10,7 @@ numpy==1.11.3
 pbr==1.10.0
 protobuf==3.1.0.post1
 six==1.10.0
-tensorflow==0.12.1
+tensorflow==2.5.1
 Werkzeug==0.11.15
 scipy==0.18.1
 Pillow==4.0.0
